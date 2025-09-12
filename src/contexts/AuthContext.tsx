@@ -118,15 +118,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Función para actualizar el usuario en el contexto
-  const updateUser = (userData: User) => {
-    setUser(userData);
-  };
+  // Función para actualizar el usuario en el contexto (comentada porque no se usa)
+  // const updateUser = (userData: User) => {
+  //   setUser(userData);
+  // };
 
-  // Función para limpiar errores
-  const clearError = () => {
-    setError(null);
-  };
+  // Función para limpiar errores (comentada porque no se usa)
+  // const clearError = () => {
+  //   setError(null);
+  // };
 
   // Valor del contexto
   const contextValue: AuthContextType = {

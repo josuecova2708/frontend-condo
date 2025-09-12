@@ -52,6 +52,7 @@ const UserManagement: React.FC = () => {
   // Cargar usuarios al montar el componente
   useEffect(() => {
     loadUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Función para cargar usuarios
@@ -60,9 +61,13 @@ const UserManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await userService.getUsers(1, searchTerm);
-      setUsers(response.results);
-    } catch (error) {
+      
+      // Asegurar que results es un array válido
+      const usersData = response?.results || [];
+      setUsers(usersData);
+    } catch (error: any) {
       setError(handleApiError(error));
+      setUsers([]); // Asegurar que users siempre sea un array
     } finally {
       setLoading(false);
     }
@@ -151,10 +156,10 @@ const UserManagement: React.FC = () => {
   };
 
   // Filtrar usuarios por término de búsqueda
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = (users || []).filter(user =>
+    user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

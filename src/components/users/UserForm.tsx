@@ -38,6 +38,7 @@ const UserForm: React.FC<UserFormProps> = ({
   const [formData, setFormData] = useState<UserFormData>({
     username: '',
     email: '',
+    password: '',
     first_name: '',
     last_name: '',
     telefono: '',
@@ -62,6 +63,7 @@ const UserForm: React.FC<UserFormProps> = ({
         setFormData({
           username: user.username,
           email: user.email,
+          password: '', // No mostrar password en edición
           first_name: user.first_name,
           last_name: user.last_name,
           telefono: user.telefono || '',
@@ -76,6 +78,7 @@ const UserForm: React.FC<UserFormProps> = ({
         setFormData({
           username: '',
           email: '',
+          password: '',
           first_name: '',
           last_name: '',
           telefono: '',
@@ -92,17 +95,49 @@ const UserForm: React.FC<UserFormProps> = ({
   }, [open, user, mode]);
 
   // Cargar roles y condominios
-  const loadFormData = async () => {
+  const loadFormData = async (retryCount = 0) => {
     try {
       setDataLoading(true);
+      setError(null);
+      
+      // Verificar token de autenticación
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No hay token de autenticación disponible');
+      }
+      
       const [rolesData, condominiosData] = await Promise.all([
         roleService.getRoles(),
         condominioService.getCondominios(),
       ]);
-      setRoles(rolesData);
-      setCondominios(condominiosData);
-    } catch (error) {
-      setError(handleApiError(error));
+      
+      // Validar y setear roles
+      if (rolesData && Array.isArray(rolesData)) {
+        setRoles(rolesData);
+      } else {
+        console.warn('Roles no válidos recibidos:', rolesData);
+        setRoles([]);
+      }
+      
+      // Validar y setear condominios  
+      if (condominiosData && Array.isArray(condominiosData)) {
+        setCondominios(condominiosData);
+      } else {
+        console.warn('Condominios no válidos recibidos:', condominiosData);
+        setCondominios([]);
+      }
+      
+    } catch (error: any) {
+      // Si es un error 401 y no hemos reintentado, intentar una vez más
+      if (error.response?.status === 401 && retryCount === 0) {
+        setTimeout(() => loadFormData(1), 1000);
+        return;
+      }
+      
+      const errorMessage = handleApiError(error);
+      setError(`Error cargando datos: ${errorMessage}`);
+      setRoles([]);
+      setCondominios([]);
     } finally {
       setDataLoading(false);
     }
@@ -163,6 +198,10 @@ const UserForm: React.FC<UserFormProps> = ({
       errors.last_name = 'El apellido es requerido';
     }
 
+    if (mode === 'create' && (!formData.password || formData.password.trim().length < 6)) {
+      errors.password = 'La contraseña es requerida y debe tener al menos 6 caracteres';
+    }
+
     if (formData.fecha_nacimiento) {
       const today = new Date();
       const birthDate = new Date(formData.fecha_nacimiento);
@@ -185,7 +224,14 @@ const UserForm: React.FC<UserFormProps> = ({
 
     try {
       setError(null);
-      await onSubmit(formData);
+      
+      // Preparar datos para envío - no enviar password vacío en modo edición
+      const submitData = { ...formData };
+      if (mode === 'edit' && !submitData.password?.trim()) {
+        delete submitData.password;
+      }
+      
+      await onSubmit(submitData);
       // El cierre se maneja en el componente padre
     } catch (error) {
       setError(handleApiError(error));
@@ -209,7 +255,20 @@ const UserForm: React.FC<UserFormProps> = ({
 
       <DialogContent>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert 
+            severity="error" 
+            sx={{ mb: 2 }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => loadFormData()}
+                disabled={dataLoading}
+              >
+                Reintentar
+              </Button>
+            }
+          >
             {error}
           </Alert>
         )}
@@ -249,6 +308,23 @@ const UserForm: React.FC<UserFormProps> = ({
                 disabled={loading}
               />
             </Grid>
+
+            {mode === 'create' && (
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  label="Contraseña"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  error={!!formErrors.password}
+                  helperText={formErrors.password}
+                  disabled={loading}
+                />
+              </Grid>
+            )}
 
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
@@ -335,11 +411,17 @@ const UserForm: React.FC<UserFormProps> = ({
                   <MenuItem value="">
                     <em>Seleccionar rol</em>
                   </MenuItem>
-                  {roles.map((role) => (
-                    <MenuItem key={role.id} value={role.id}>
-                      {role.nombre}
+                  {Array.isArray(roles) && roles.length > 0 ? (
+                    roles.map((role) => (
+                      <MenuItem key={role.id} value={role.id}>
+                        {role.nombre}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <em>No hay roles disponibles</em>
                     </MenuItem>
-                  ))}
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -357,7 +439,7 @@ const UserForm: React.FC<UserFormProps> = ({
                   <MenuItem value="">
                     <em>Seleccionar condominio</em>
                   </MenuItem>
-                  {condominios.map((condominio) => (
+                  {Array.isArray(condominios) && condominios.map((condominio) => (
                     <MenuItem key={condominio.id} value={condominio.id}>
                       {condominio.nombre}
                     </MenuItem>

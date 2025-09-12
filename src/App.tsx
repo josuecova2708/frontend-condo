@@ -8,6 +8,8 @@ import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import DashboardHome from './pages/DashboardHome';
 import UserManagement from './components/users/UserManagement';
+import Properties from './pages/Properties';
+import Communications from './pages/Communications';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -90,19 +92,16 @@ function App() {
                 }
               />
               
-              {/* Rutas futuras */}
+              {/* Gestión de propiedades */}
               <Route
                 path="properties"
-                element={
-                  <div>Gestión de Propiedades - En desarrollo</div>
-                }
+                element={<Properties />}
               />
               
+              {/* Gestión de comunicados */}
               <Route
                 path="communications"
-                element={
-                  <div>Comunicados - En desarrollo</div>
-                }
+                element={<Communications />}
               />
             </Route>
             

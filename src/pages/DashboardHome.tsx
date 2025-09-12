@@ -69,18 +69,23 @@ const DashboardHome: React.FC = () => {
                   <Typography variant="h4" component="h1" gutterBottom>
                     ¡Bienvenido, {user?.first_name || user?.username}!
                   </Typography>
-                  <Typography variant="body1" color="text.secondary">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     {user?.role_name && (
                       <>
-                        Rol: <Chip label={user.role_name} size="small" color="primary" sx={{ ml: 1 }} />
+                        <Typography variant="body1" color="text.secondary" component="span">
+                          Rol:
+                        </Typography>
+                        <Chip label={user.role_name} size="small" color="primary" />
                       </>
                     )}
                     {user?.condominio_name && (
                       <>
-                        {' • '} Condominio: {user.condominio_name}
+                        <Typography variant="body1" color="text.secondary" component="span">
+                          {user?.role_name ? ' • ' : ''}Condominio: {user.condominio_name}
+                        </Typography>
                       </>
                     )}
-                  </Typography>
+                  </Box>
                 </Box>
               </Box>
               

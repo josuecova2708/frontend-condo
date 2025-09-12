@@ -8,7 +8,14 @@ import {
   Condominio,
   PaginatedResponse,
   UserFormData,
-  PasswordChangeData
+  PasswordChangeData,
+  UnidadHabitacional,
+  UnidadFormData,
+  Bloque,
+  Propietario,
+  Residente,
+  AvisoComunicado,
+  AvisoFormData
 } from '../types';
 
 // Configuración base de Axios
@@ -117,31 +124,31 @@ export const userService = {
     params.append('page', page.toString());
     if (search) params.append('search', search);
     
-    const response: AxiosResponse<PaginatedResponse<User>> = await api.get(`/users/?${params}`);
+    const response: AxiosResponse<PaginatedResponse<User>> = await api.get(`/users/manage/?${params}`);
     return response.data;
   },
 
   async getUser(id: number): Promise<User> {
-    const response: AxiosResponse<User> = await api.get(`/users/${id}/`);
+    const response: AxiosResponse<User> = await api.get(`/users/manage/${id}/`);
     return response.data;
   },
 
   async createUser(data: UserFormData): Promise<User> {
-    const response: AxiosResponse<User> = await api.post('/users/', data);
+    const response: AxiosResponse<User> = await api.post('/users/manage/', data);
     return response.data;
   },
 
   async updateUser(id: number, data: Partial<UserFormData>): Promise<User> {
-    const response: AxiosResponse<User> = await api.patch(`/users/${id}/`, data);
+    const response: AxiosResponse<User> = await api.patch(`/users/manage/${id}/`, data);
     return response.data;
   },
 
   async deleteUser(id: number): Promise<void> {
-    await api.delete(`/users/${id}/`);
+    await api.delete(`/users/manage/${id}/`);
   },
 
   async toggleUserStatus(id: number): Promise<User> {
-    const response: AxiosResponse<User> = await api.patch(`/users/${id}/toggle-status/`);
+    const response: AxiosResponse<User> = await api.patch(`/users/manage/${id}/toggle-status/`);
     return response.data;
   },
 };
@@ -149,25 +156,239 @@ export const userService = {
 // Servicios de roles
 export const roleService = {
   async getRoles(): Promise<Role[]> {
-    const response: AxiosResponse<Role[]> = await api.get('/users/roles/');
-    return response.data;
+    try {
+      const response: AxiosResponse<PaginatedResponse<Role>> = await api.get('/users/roles/');
+      
+      if (!response.data) {
+        console.warn('Respuesta de roles vacía');
+        return [];
+      }
+      
+      // Verificar si es una respuesta paginada con 'results'
+      if (response.data.results && Array.isArray(response.data.results)) {
+        return response.data.results;
+      }
+      
+      // Si no es paginada, verificar si es un array directo
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      console.error('Respuesta de roles con formato inválido:', response.data);
+      return [];
+      
+    } catch (error: any) {
+      console.error('Error obteniendo roles:', error.message || error);
+      throw error;
+    }
   },
 
   async getRole(id: number): Promise<Role> {
-    const response: AxiosResponse<Role> = await api.get(`/users/roles/${id}/`);
-    return response.data;
+    try {
+      const response: AxiosResponse<Role> = await api.get(`/users/roles/${id}/`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error obteniendo rol ${id}:`, error.message || error);
+      throw error;
+    }
   },
 };
 
 // Servicios de condominios
 export const condominioService = {
   async getCondominios(): Promise<Condominio[]> {
-    const response: AxiosResponse<Condominio[]> = await api.get('/core/condominios/');
-    return response.data;
+    try {
+      const response: AxiosResponse<PaginatedResponse<Condominio>> = await api.get('/core/condominios/');
+      
+      if (!response.data) {
+        console.warn('Respuesta de condominios vacía');
+        return [];
+      }
+      
+      // Verificar si es una respuesta paginada con 'results'
+      if (response.data.results && Array.isArray(response.data.results)) {
+        return response.data.results;
+      }
+      
+      // Si no es paginada, verificar si es un array directo
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      console.error('Respuesta de condominios con formato inválido:', response.data);
+      return [];
+      
+    } catch (error: any) {
+      console.error('Error obteniendo condominios:', error.message || error);
+      throw error;
+    }
   },
 
   async getCondominio(id: number): Promise<Condominio> {
-    const response: AxiosResponse<Condominio> = await api.get(`/core/condominios/${id}/`);
+    try {
+      const response: AxiosResponse<Condominio> = await api.get(`/core/condominios/${id}/`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error obteniendo condominio ${id}:`, error.message || error);
+      throw error;
+    }
+  },
+};
+
+// Servicios de bloques
+export const bloqueService = {
+  async getBloques(): Promise<Bloque[]> {
+    const response: AxiosResponse<PaginatedResponse<Bloque>> = await api.get('/core/bloques/');
+    return response.data.results;
+  },
+
+  async getBloque(id: number): Promise<Bloque> {
+    const response: AxiosResponse<Bloque> = await api.get(`/core/bloques/${id}/`);
+    return response.data;
+  },
+};
+
+// Servicios de propiedades
+export const propertyService = {
+  // Unidades habitacionales
+  async getUnidades(page: number = 1, search?: string): Promise<PaginatedResponse<UnidadHabitacional>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    if (search) params.append('search', search);
+    
+    const response: AxiosResponse<PaginatedResponse<UnidadHabitacional>> = await api.get(`/properties/unidades/?${params}`);
+    return response.data;
+  },
+
+  async getUnidad(id: number): Promise<UnidadHabitacional> {
+    const response: AxiosResponse<UnidadHabitacional> = await api.get(`/properties/unidades/${id}/`);
+    return response.data;
+  },
+
+  async createUnidad(data: UnidadFormData): Promise<UnidadHabitacional> {
+    const response: AxiosResponse<UnidadHabitacional> = await api.post('/properties/unidades/', data);
+    return response.data;
+  },
+
+  async updateUnidad(id: number, data: Partial<UnidadFormData>): Promise<UnidadHabitacional> {
+    const response: AxiosResponse<UnidadHabitacional> = await api.patch(`/properties/unidades/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteUnidad(id: number): Promise<void> {
+    await api.delete(`/properties/unidades/${id}/`);
+  },
+
+  async toggleUnidadStatus(id: number): Promise<UnidadHabitacional> {
+    const response: AxiosResponse<UnidadHabitacional> = await api.patch(`/properties/unidades/${id}/toggle-status/`);
+    return response.data;
+  },
+
+  // Propietarios
+  async getPropietarios(page: number = 1, search?: string): Promise<PaginatedResponse<Propietario>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    if (search) params.append('search', search);
+    
+    const response: AxiosResponse<PaginatedResponse<Propietario>> = await api.get(`/properties/propietarios/?${params}`);
+    return response.data;
+  },
+
+  async getPropietario(id: number): Promise<Propietario> {
+    const response: AxiosResponse<Propietario> = await api.get(`/properties/propietarios/${id}/`);
+    return response.data;
+  },
+
+  // Residentes
+  async getResidentes(page: number = 1, search?: string): Promise<PaginatedResponse<Residente>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    if (search) params.append('search', search);
+    
+    const response: AxiosResponse<PaginatedResponse<Residente>> = await api.get(`/properties/residentes/?${params}`);
+    return response.data;
+  },
+
+  async getResidente(id: number): Promise<Residente> {
+    const response: AxiosResponse<Residente> = await api.get(`/properties/residentes/${id}/`);
+    return response.data;
+  },
+};
+
+// Servicios de comunicaciones
+export const communicationService = {
+  async getAvisos(page: number = 1, search?: string): Promise<PaginatedResponse<AvisoComunicado>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    if (search) params.append('search', search);
+    
+    const response: AxiosResponse<PaginatedResponse<AvisoComunicado>> = await api.get(`/communications/avisos/?${params}`);
+    return response.data;
+  },
+
+  async getAviso(id: number): Promise<AvisoComunicado> {
+    const response: AxiosResponse<AvisoComunicado> = await api.get(`/communications/avisos/${id}/`);
+    return response.data;
+  },
+
+  async createAviso(data: AvisoFormData): Promise<AvisoComunicado> {
+    try {
+      // Preparar FormData para archivos si los hay
+      const formData = new FormData();
+      
+      // Campos básicos
+      formData.append('titulo', data.titulo);
+      formData.append('contenido', data.contenido);
+      formData.append('tipo', data.tipo);
+      formData.append('prioridad', data.prioridad);
+      formData.append('condominio', data.condominio.toString());
+      formData.append('fecha_publicacion', data.fecha_publicacion);
+      
+      // Campos opcionales
+      if (data.fecha_expiracion) {
+        formData.append('fecha_expiracion', data.fecha_expiracion);
+      }
+      
+      formData.append('is_active', (data.is_active || true).toString());
+      formData.append('is_published', (data.is_published || false).toString());
+      
+      // Archivos
+      if (data.archivo_adjunto) {
+        formData.append('archivo_adjunto', data.archivo_adjunto);
+      }
+      
+      if (data.imagen) {
+        formData.append('imagen', data.imagen);
+      }
+      
+      const response: AxiosResponse<AvisoComunicado> = await api.post('/communications/avisos/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creando aviso:', error);
+      throw error;
+    }
+  },
+
+  async updateAviso(id: number, data: Partial<AvisoFormData>): Promise<AvisoComunicado> {
+    const response: AxiosResponse<AvisoComunicado> = await api.patch(`/communications/avisos/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteAviso(id: number): Promise<void> {
+    await api.delete(`/communications/avisos/${id}/`);
+  },
+
+  async marcarComoLeido(id: number): Promise<void> {
+    await api.post(`/communications/avisos/${id}/marcar-como-leido/`);
+  },
+
+  async getEstadisticas(): Promise<any> {
+    const response = await api.get('/communications/avisos/estadisticas/');
     return response.data;
   },
 };
