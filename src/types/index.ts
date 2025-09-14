@@ -177,6 +177,44 @@ export interface UnidadFormData {
   is_active?: boolean;
 }
 
+// Tipos para el mapa interactivo
+export interface MapPosition {
+  x: number;
+  y: number;
+}
+
+export interface AreaComun {
+  nombre: string;
+  coordenadas: MapPosition;
+  width: number;
+  height: number;
+}
+
+export interface BloqueConfig {
+  unidades_numeros: number[];
+  color: string;
+  position: MapPosition;
+}
+
+export interface MapConfig {
+  bloques: {
+    [key: string]: BloqueConfig;
+  };
+  areas_comunes: AreaComun[];
+}
+
+export interface BloqueData {
+  nombre: string;
+  unidades: UnidadHabitacional[];
+}
+
+export interface MapLayoutResponse {
+  map_config: MapConfig;
+  bloques_data: {
+    [key: string]: BloqueData;
+  };
+}
+
 export interface Propietario {
   id: number;
   user: number;

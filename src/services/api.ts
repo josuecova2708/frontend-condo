@@ -15,7 +15,8 @@ import {
   Propietario,
   Residente,
   AvisoComunicado,
-  AvisoFormData
+  AvisoFormData,
+  MapLayoutResponse
 } from '../types';
 
 // Configuración base de Axios
@@ -281,6 +282,11 @@ export const propertyService = {
 
   async toggleUnidadStatus(id: number): Promise<UnidadHabitacional> {
     const response: AxiosResponse<UnidadHabitacional> = await api.patch(`/properties/unidades/${id}/toggle-status/`);
+    return response.data;
+  },
+
+  async getMapLayout(): Promise<MapLayoutResponse> {
+    const response: AxiosResponse<MapLayoutResponse> = await api.get('/properties/unidades/map_layout/');
     return response.data;
   },
 
