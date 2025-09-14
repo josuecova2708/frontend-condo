@@ -16,6 +16,7 @@ import {
   Menu,
   MenuItem,
   Chip,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -26,6 +27,11 @@ import {
   Settings,
   Home as HomeIcon,
   Notifications,
+  Security as SecurityIcon,
+  ExpandLess,
+  ExpandMore,
+  VpnKey as VpnKeyIcon,
+  Map as MapIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,8 +41,9 @@ const drawerWidth = 240;
 interface MenuItemType {
   text: string;
   icon: React.ReactElement;
-  path: string;
+  path?: string;
   roles?: string[];
+  children?: MenuItemType[];
 }
 
 const menuItems: MenuItemType[] = [
@@ -46,10 +53,26 @@ const menuItems: MenuItemType[] = [
     path: '/dashboard',
   },
   {
-    text: 'Usuarios',
-    icon: <PeopleIcon />,
-    path: '/dashboard/users',
+    text: 'Gestión Acceso',
+    icon: <SecurityIcon />,
     roles: ['Administrador'],
+    children: [
+      {
+        text: 'Gestionar Usuarios',
+        icon: <PeopleIcon />,
+        path: '/dashboard/users',
+      },
+      {
+        text: 'Gestionar Roles y Permisos',
+        icon: <VpnKeyIcon />,
+        path: '/dashboard/roles-permissions',
+      },
+      {
+        text: 'Gestionar Unidades Habitacionales',
+        icon: <MapIcon />,
+        path: '/dashboard/units-map',
+      },
+    ],
   },
   {
     text: 'Propiedades',
@@ -70,6 +93,7 @@ const Dashboard: React.FC = () => {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
 
   // Manejar apertura/cierre del drawer móvil
   const handleDrawerToggle = () => {
@@ -92,6 +116,14 @@ const Dashboard: React.FC = () => {
     navigate('/login');
   };
 
+  // Manejar apertura/cierre de submenús
+  const handleSubmenuToggle = (itemText: string) => {
+    setOpenSubmenus(prev => ({
+      ...prev,
+      [itemText]: !prev[itemText]
+    }));
+  };
+
   // Filtrar elementos del menú según el rol del usuario
   const filteredMenuItems = menuItems.filter(item => {
     if (!item.roles) return true;
@@ -109,31 +141,78 @@ const Dashboard: React.FC = () => {
       <Divider />
       <List>
         {filteredMenuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => {
-                navigate(item.path);
-                setMobileOpen(false);
-              }}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.light',
-                  '&:hover': {
+          <React.Fragment key={item.text}>
+            <ListItem disablePadding>
+              <ListItemButton
+                selected={item.path ? location.pathname === item.path : false}
+                onClick={() => {
+                  if (item.children) {
+                    handleSubmenuToggle(item.text);
+                  } else if (item.path) {
+                    navigate(item.path);
+                    setMobileOpen(false);
+                  }
+                }}
+                sx={{
+                  '&.Mui-selected': {
                     backgroundColor: 'primary.light',
+                    '&:hover': {
+                      backgroundColor: 'primary.light',
+                    },
                   },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}
-              />
-            </ListItemButton>
-          </ListItem>
+                }}
+              >
+                <ListItemIcon sx={{ color: item.path && location.pathname === item.path ? 'primary.main' : 'inherit' }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.text}
+                  sx={{ color: item.path && location.pathname === item.path ? 'primary.main' : 'inherit' }}
+                />
+                {item.children && (
+                  openSubmenus[item.text] ? <ExpandLess /> : <ExpandMore />
+                )}
+              </ListItemButton>
+            </ListItem>
+
+            {/* Submenú colapsable */}
+            {item.children && (
+              <Collapse in={openSubmenus[item.text]} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {item.children.map((child) => (
+                    <ListItem key={child.text} disablePadding>
+                      <ListItemButton
+                        selected={child.path ? location.pathname === child.path : false}
+                        onClick={() => {
+                          if (child.path) {
+                            navigate(child.path);
+                            setMobileOpen(false);
+                          }
+                        }}
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'primary.light',
+                            '&:hover': {
+                              backgroundColor: 'primary.light',
+                            },
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ color: child.path && location.pathname === child.path ? 'primary.main' : 'inherit' }}>
+                          {child.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={child.text}
+                          sx={{ color: child.path && location.pathname === child.path ? 'primary.main' : 'inherit' }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            )}
+          </React.Fragment>
         ))}
       </List>
     </div>
@@ -163,6 +242,8 @@ const Dashboard: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {location.pathname === '/dashboard' && 'Dashboard'}
             {location.pathname === '/dashboard/users' && 'Gestión de Usuarios'}
+            {location.pathname === '/dashboard/roles-permissions' && 'Gestión de Roles y Permisos'}
+            {location.pathname === '/dashboard/units-map' && 'Gestionar Unidades Habitacionales'}
             {location.pathname === '/dashboard/properties' && 'Propiedades'}
             {location.pathname === '/dashboard/communications' && 'Comunicados'}
           </Typography>

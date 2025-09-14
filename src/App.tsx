@@ -10,6 +10,8 @@ import DashboardHome from './pages/DashboardHome';
 import UserManagement from './components/users/UserManagement';
 import Properties from './pages/Properties';
 import Communications from './pages/Communications';
+import UnitsManagement from './pages/UnitsManagement';
+import RolesPermissions from './pages/RolesPermissions';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -91,13 +93,33 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              
+
+              {/* Gestión de roles y permisos - Solo para administradores */}
+              <Route
+                path="roles-permissions"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <RolesPermissions />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Gestionar unidades habitacionales - Solo para administradores */}
+              <Route
+                path="units-map"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <UnitsManagement />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Gestión de propiedades */}
               <Route
                 path="properties"
                 element={<Properties />}
               />
-              
+
               {/* Gestión de comunicados */}
               <Route
                 path="communications"
