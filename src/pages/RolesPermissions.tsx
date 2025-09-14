@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -12,6 +12,7 @@ import {
   ListItemIcon,
   ListItemText,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import {
   AdminPanelSettings as AdminIcon,
@@ -21,18 +22,46 @@ import {
   Settings as SettingsIcon,
   Build as BuildIcon,
 } from '@mui/icons-material';
+import { Role } from '../types';
+import { roleService } from '../services/api';
 
 const RolesPermissions: React.FC = () => {
-  // Datos de ejemplo basados en las instrucciones
-  const roles = [
-    { id: 1, nombre: 'Super Admin', descripcion: 'Acceso completo al sistema', color: 'error' },
-    { id: 2, nombre: 'Administrador', descripcion: 'Gestión del condominio', color: 'primary' },
-    { id: 3, nombre: 'Residente (Propietario)', descripcion: 'Propietario de unidad', color: 'success' },
-    { id: 4, nombre: 'Inquilino', descripcion: 'Residente inquilino', color: 'info' },
-    { id: 5, nombre: 'Personal Seguridad', descripcion: 'Personal de seguridad', color: 'warning' },
-    { id: 6, nombre: 'Personal Mantenimiento', descripcion: 'Personal de mantenimiento', color: 'secondary' },
-    { id: 7, nombre: 'Contador', descripcion: 'Gestión contable', color: 'default' },
-  ];
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const rolesData = await roleService.getRoles();
+        setRoles(rolesData);
+      } catch (err: any) {
+        setError(err.message || 'Error al cargar los roles');
+        console.error('Error fetching roles:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
+  // Función para asignar colores a los roles
+  const getRoleColor = (roleName: string) => {
+    const colorMap: { [key: string]: any } = {
+      'Super Admin': 'error',
+      'Administrador': 'primary',
+      'Residente (Propietario)': 'success',
+      'Residente Propietario': 'success',
+      'Inquilino': 'info',
+      'Personal Seguridad': 'warning',
+      'Personal Mantenimiento': 'secondary',
+      'Contador': 'default',
+    };
+    return colorMap[roleName] || 'default';
+  };
 
   const modulos = [
     { nombre: 'usuarios', icon: <PersonIcon />, permisos: ['crear', 'leer', 'actualizar', 'eliminar'] },
@@ -68,9 +97,21 @@ const RolesPermissions: React.FC = () => {
           Sistema de Permisos Granular
         </Typography>
         <Typography variant="body2">
-          El sistema cuenta con 7 roles predefinidos y permisos granulares por módulo según las especificaciones del proyecto.
+          El sistema cuenta con {roles.length > 0 ? `${roles.length} roles` : 'múltiples roles'} y permisos granulares por módulo según las especificaciones del proyecto.
         </Typography>
       </Alert>
+
+      {/* Alerta de error si hay problemas cargando */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Error al cargar los datos
+          </Typography>
+          <Typography variant="body2">
+            {error}
+          </Typography>
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {/* Roles del Sistema */}
@@ -81,29 +122,53 @@ const RolesPermissions: React.FC = () => {
                 <AdminIcon color="primary" />
                 Roles del Sistema
               </Typography>
-              <List>
-                {roles.map((rol) => (
-                  <ListItem key={rol.id}>
-                    <ListItemIcon>
-                      <PersonIcon />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {rol.nombre}
-                          <Chip
-                            label={`ID: ${rol.id}`}
-                            size="small"
-                            color={rol.color as any}
-                            variant="outlined"
-                          />
-                        </Box>
-                      }
-                      secondary={rol.descripcion}
-                    />
-                  </ListItem>
-                ))}
-              </List>
+
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <List>
+                  {roles.length > 0 ? (
+                    roles.map((rol) => (
+                      <ListItem key={rol.id}>
+                        <ListItemIcon>
+                          <PersonIcon />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {rol.nombre}
+                              <Chip
+                                label={`ID: ${rol.id}`}
+                                size="small"
+                                color={getRoleColor(rol.nombre)}
+                                variant="outlined"
+                              />
+                              {rol.permissions_count > 0 && (
+                                <Chip
+                                  label={`${rol.permissions_count} permisos`}
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Box>
+                          }
+                          secondary={rol.descripcion || 'Sin descripción'}
+                        />
+                      </ListItem>
+                    ))
+                  ) : (
+                    <ListItem>
+                      <ListItemText
+                        primary="No se encontraron roles"
+                        secondary="No hay roles disponibles en la base de datos"
+                      />
+                    </ListItem>
+                  )}
+                </List>
+              )}
             </CardContent>
           </Card>
         </Grid>

@@ -56,14 +56,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       const response = await authService.login(credentials);
-      
+
       // Guardar tokens en localStorage
       localStorage.setItem('access_token', response.access);
       localStorage.setItem('refresh_token', response.refresh);
-      
-      // Actualizar estado
+
+      // Actualizar estado con token primero
       setToken(response.access);
-      setUser(response.user);
+
+      // Obtener perfil completo del usuario después del login
+      try {
+        const fullUserProfile = await authService.getProfile();
+        setUser(fullUserProfile);
+        console.log('Usuario después del login:', fullUserProfile);
+      } catch (profileError) {
+        console.warn('Error obteniendo perfil completo, usando datos del login:', profileError);
+        setUser(response.user);
+      }
       
     } catch (error: any) {
       const errorMessage = handleApiError(error);

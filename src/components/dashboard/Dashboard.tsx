@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Drawer,
@@ -95,6 +95,25 @@ const Dashboard: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
 
+  // Efecto para depurar el rol del usuario y forzar re-renderizado
+  useEffect(() => {
+    if (user) {
+      console.log('Dashboard - Usuario actualizado:', {
+        username: user.username,
+        role_name: user.role_name,
+        role: user.role,
+        is_staff: user.is_staff
+      });
+    } else {
+      console.log('Dashboard - No hay usuario');
+    }
+  }, [user]);
+
+  // Efecto para asegurar que se ejecute cuando el componente se monte
+  useEffect(() => {
+    console.log('Dashboard montado');
+  }, []);
+
   // Manejar apertura/cierre del drawer móvil
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -124,11 +143,32 @@ const Dashboard: React.FC = () => {
     }));
   };
 
-  // Filtrar elementos del menú según el rol del usuario
-  const filteredMenuItems = menuItems.filter(item => {
-    if (!item.roles) return true;
-    return item.roles.includes(user?.role_name || '');
-  });
+  // Filtrar elementos del menú según el rol del usuario usando useMemo
+  const filteredMenuItems = useMemo(() => {
+    console.log('Recalculando filteredMenuItems para usuario:', user);
+
+    return menuItems.filter(item => {
+      if (!item.roles) return true;
+      if (!user) return false;
+
+      // Verificar múltiples fuentes del rol del usuario
+      const userRole = user.role_name || user.role?.nombre || '';
+
+      console.log(`Evaluando item "${item.text}" - Roles requeridos:`, item.roles, 'Usuario rol:', userRole);
+
+      // También verificar si es staff para dar acceso de administrador
+      const isAdmin = item.roles.includes('Administrador') && (
+        userRole === 'Administrador' ||
+        userRole === 'Super Admin' ||
+        user.is_staff === true
+      );
+
+      const hasAccess = item.roles.includes(userRole) || isAdmin;
+      console.log(`Item "${item.text}" acceso:`, hasAccess);
+
+      return hasAccess;
+    });
+  }, [user]); // Dependencia en user para que se recalcule cuando cambie
 
   // Contenido del drawer
   const drawer = (
