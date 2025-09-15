@@ -1,11 +1,13 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
-import { 
-  LoginCredentials, 
-  LoginResponse, 
-  RegisterData, 
-  User, 
-  Role, 
+import {
+  LoginCredentials,
+  LoginResponse,
+  RegisterData,
+  User,
+  Role,
+  Permission,
   Condominio,
+  ConfiguracionSistema,
   PaginatedResponse,
   UserFormData,
   PasswordChangeData,
@@ -13,6 +15,7 @@ import {
   UnidadFormData,
   Bloque,
   Propietario,
+  PropietarioFormData,
   Residente,
   AvisoComunicado,
   AvisoFormData,
@@ -193,6 +196,98 @@ export const roleService = {
       throw error;
     }
   },
+
+  async getRolePermissions(roleId: number): Promise<Permission[]> {
+    try {
+      const response: AxiosResponse<Permission[]> = await api.get(`/users/roles/${roleId}/permissions/`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error obteniendo permisos del rol ${roleId}:`, error.message || error);
+      throw error;
+    }
+  },
+
+  async assignPermissionToRole(roleId: number, permissionId: number): Promise<any> {
+    try {
+      const response: AxiosResponse<any> = await api.post(`/users/roles/${roleId}/assign_permission/`, {
+        permission_id: permissionId
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error asignando permiso ${permissionId} al rol ${roleId}:`, error.message || error);
+      throw error;
+    }
+  },
+
+  async removePermissionFromRole(roleId: number, permissionId: number): Promise<any> {
+    try {
+      const response: AxiosResponse<any> = await api.post(`/users/roles/${roleId}/remove_permission/`, {
+        permission_id: permissionId
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error removiendo permiso ${permissionId} del rol ${roleId}:`, error.message || error);
+      throw error;
+    }
+  },
+
+  async syncRolePermissions(roleId: number, permissionIds: number[]): Promise<any> {
+    try {
+      const response: AxiosResponse<any> = await api.post(`/users/roles/${roleId}/sync_permissions/`, {
+        permission_ids: permissionIds
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error sincronizando permisos del rol ${roleId}:`, error.message || error);
+      throw error;
+    }
+  },
+};
+
+// Servicios de permisos
+export const permissionService = {
+  async getPermissions(): Promise<Permission[]> {
+    try {
+      const response: AxiosResponse<PaginatedResponse<Permission>> = await api.get('/users/permissions/');
+
+      if (!response.data) {
+        console.warn('Respuesta de permisos vacía');
+        return [];
+      }
+
+      // Verificar si es una respuesta paginada con 'results'
+      if (response.data.results && Array.isArray(response.data.results)) {
+        return response.data.results;
+      }
+
+      // Si no es paginada, verificar si es un array directo
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+
+      console.error('Respuesta de permisos con formato inválido:', response.data);
+      return [];
+
+    } catch (error: any) {
+      console.error('Error obteniendo permisos:', error.message || error);
+      throw error;
+    }
+  },
+
+  async getPermissionsByModule(module: string): Promise<Permission[]> {
+    try {
+      const response: AxiosResponse<PaginatedResponse<Permission>> = await api.get(`/users/permissions/?modulo=${module}`);
+
+      if (response.data.results && Array.isArray(response.data.results)) {
+        return response.data.results;
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error(`Error obteniendo permisos del módulo ${module}:`, error.message || error);
+      throw error;
+    }
+  },
 };
 
 // Servicios de condominios
@@ -302,6 +397,35 @@ export const propertyService = {
 
   async getPropietario(id: number): Promise<Propietario> {
     const response: AxiosResponse<Propietario> = await api.get(`/properties/propietarios/${id}/`);
+    return response.data;
+  },
+
+  async createPropietario(data: PropietarioFormData): Promise<Propietario> {
+    const response: AxiosResponse<Propietario> = await api.post('/properties/propietarios/', data);
+    return response.data;
+  },
+
+  async updatePropietario(id: number, data: Partial<PropietarioFormData>): Promise<Propietario> {
+    const response: AxiosResponse<Propietario> = await api.patch(`/properties/propietarios/${id}/`, data);
+    return response.data;
+  },
+
+  async deletePropietario(id: number): Promise<void> {
+    await api.delete(`/properties/propietarios/${id}/`);
+  },
+
+  async togglePropietarioStatus(id: number): Promise<Propietario> {
+    const response: AxiosResponse<Propietario> = await api.patch(`/properties/propietarios/${id}/toggle-status/`);
+    return response.data;
+  },
+
+  async getUsuariosSinUnidad(): Promise<User[]> {
+    const response: AxiosResponse<User[]> = await api.get('/properties/propietarios/usuarios_sin_unidad/');
+    return response.data;
+  },
+
+  async getUnidadesDisponibles(): Promise<UnidadHabitacional[]> {
+    const response: AxiosResponse<UnidadHabitacional[]> = await api.get('/properties/unidades/sin_propietario/');
     return response.data;
   },
 
@@ -427,6 +551,51 @@ export const handleApiError = (error: any): string => {
   }
   
   return 'Ha ocurrido un error inesperado';
+};
+
+// ======================
+// Configuraciones del Sistema
+// ======================
+export const configService = {
+  async getConfiguraciones(page: number = 1, search?: string, categoria?: string): Promise<PaginatedResponse<ConfiguracionSistema>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    if (search) params.append('search', search);
+    if (categoria) params.append('categoria', categoria);
+
+    const response: AxiosResponse<PaginatedResponse<ConfiguracionSistema>> = await api.get(`/core/configuraciones/?${params}`);
+    return response.data;
+  },
+
+  async getConfiguracion(id: number): Promise<ConfiguracionSistema> {
+    const response: AxiosResponse<ConfiguracionSistema> = await api.get(`/core/configuraciones/${id}/`);
+    return response.data;
+  },
+
+  async deleteConfiguracion(id: number): Promise<void> {
+    await api.delete(`/core/configuraciones/${id}/`);
+  },
+
+  async getConfiguracionesPorCategoria(): Promise<{ [categoria: string]: ConfiguracionSistema[] }> {
+    try {
+      const response = await this.getConfiguraciones(1, '', '');
+      const configuraciones = response.results || [];
+
+      // Agrupar por categoría
+      const grouped = configuraciones.reduce((acc, config) => {
+        const categoria = config.categoria || 'Sin categoría';
+        if (!acc[categoria]) {
+          acc[categoria] = [];
+        }
+        acc[categoria].push(config);
+        return acc;
+      }, {} as { [categoria: string]: ConfiguracionSistema[] });
+
+      return grouped;
+    } catch (error) {
+      throw error;
+    }
+  }
 };
 
 export default api;

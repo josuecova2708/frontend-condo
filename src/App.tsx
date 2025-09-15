@@ -12,6 +12,8 @@ import Properties from './pages/Properties';
 import Communications from './pages/Communications';
 import UnitsManagement from './pages/UnitsManagement';
 import RolesPermissions from './pages/RolesPermissions';
+import SystemConfig from './pages/SystemConfig';
+import UserProfile from './pages/UserProfile';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -124,6 +126,22 @@ function App() {
               <Route
                 path="communications"
                 element={<Communications />}
+              />
+
+              {/* Gestionar configuración del sistema - Solo para administradores */}
+              <Route
+                path="system-config"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <SystemConfig />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Gestionar perfil de usuario */}
+              <Route
+                path="user-profile"
+                element={<UserProfile />}
               />
             </Route>
             

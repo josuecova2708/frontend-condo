@@ -38,9 +38,10 @@ import {
   PersonOff,
   PersonAdd,
 } from '@mui/icons-material';
-import { UnidadHabitacional, UnidadFormData } from '../../types';
+import { UnidadHabitacional, UnidadFormData, Propietario, PropietarioFormData } from '../../types';
 import { propertyService, handleApiError } from '../../services/api';
 import UnidadForm from './UnidadForm';
+import PropietarioForm from './PropietarioForm';
 
 
 interface TabPanelProps {
@@ -71,20 +72,28 @@ function TabPanel(props: TabPanelProps) {
 
 const PropertyManagement: React.FC = () => {
   const [unidades, setUnidades] = useState<UnidadHabitacional[]>([]);
+  const [propietarios, setPropietarios] = useState<Propietario[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [tabValue, setTabValue] = useState(0);
   const [selectedUnidad, setSelectedUnidad] = useState<UnidadHabitacional | null>(null);
+  const [selectedPropietario, setSelectedPropietario] = useState<Propietario | null>(null);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
+  const [isPropietarioFormOpen, setIsPropietarioFormOpen] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [propietarioFormMode, setPropietarioFormMode] = useState<'create' | 'edit'>('create');
   const [actionLoading, setActionLoading] = useState<boolean>(false);
 
-  // Datos mock para demostración (en producción vendría de la API)
+  // Cargar datos según el tab activo
   useEffect(() => {
-    loadUnidades();
-  }, []);
+    if (tabValue === 0) {
+      loadUnidades();
+    } else if (tabValue === 1) {
+      loadPropietarios();
+    }
+  }, [tabValue]);
 
   const loadUnidades = async () => {
     try {
@@ -99,8 +108,25 @@ const PropertyManagement: React.FC = () => {
     }
   };
 
+  const loadPropietarios = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await propertyService.getPropietarios(1, searchTerm);
+      setPropietarios(response.results);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = () => {
-    loadUnidades();
+    if (tabValue === 0) {
+      loadUnidades();
+    } else if (tabValue === 1) {
+      loadPropietarios();
+    }
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -184,11 +210,98 @@ const PropertyManagement: React.FC = () => {
     setSelectedUnidad(null);
   };
 
+  // ============= FUNCIONES DE PROPIETARIOS =============
+
+  // Función para abrir formulario de crear propietario
+  const handleCreatePropietario = () => {
+    setSelectedPropietario(null);
+    setPropietarioFormMode('create');
+    setIsPropietarioFormOpen(true);
+  };
+
+  // Función para abrir formulario de editar propietario
+  const handleEditPropietario = (propietario: Propietario) => {
+    setSelectedPropietario(propietario);
+    setPropietarioFormMode('edit');
+    setIsPropietarioFormOpen(true);
+  };
+
+  // Función para confirmar eliminación de propietario
+  const handleDeletePropietario = (propietario: Propietario) => {
+    setSelectedPropietario(propietario);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Función para eliminar propietario
+  const confirmDeletePropietario = async () => {
+    if (!selectedPropietario) return;
+
+    try {
+      setActionLoading(true);
+      await propertyService.deletePropietario(selectedPropietario.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedPropietario(null);
+      await loadPropietarios();
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Función para cambiar estado del propietario
+  const handleTogglePropietarioStatus = async (propietario: Propietario) => {
+    try {
+      setActionLoading(true);
+      await propertyService.togglePropietarioStatus(propietario.id);
+      await loadPropietarios();
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Función para manejar el envío del formulario de propietario
+  const handlePropietarioFormSubmit = async (formData: PropietarioFormData) => {
+    try {
+      setActionLoading(true);
+
+      if (propietarioFormMode === 'create') {
+        await propertyService.createPropietario(formData);
+      } else if (selectedPropietario) {
+        await propertyService.updatePropietario(selectedPropietario.id, formData);
+      }
+
+      setIsPropietarioFormOpen(false);
+      setSelectedPropietario(null);
+      await loadPropietarios();
+    } catch (error) {
+      throw error; // El error se maneja en el formulario
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Función para cerrar formulario de propietario
+  const handlePropietarioFormClose = () => {
+    setIsPropietarioFormOpen(false);
+    setSelectedPropietario(null);
+  };
+
   // Filtrar unidades por término de búsqueda
   const filteredUnidades = unidades.filter(unidad =>
     unidad.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (unidad.bloque_nombre && unidad.bloque_nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (unidad.direccion_completa && unidad.direccion_completa.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Filtrar propietarios por término de búsqueda
+  const filteredPropietarios = propietarios.filter(propietario =>
+    (propietario.user_full_name && propietario.user_full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (propietario.user_email && propietario.user_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (propietario.unidad_numero && propietario.unidad_numero.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (propietario.bloque_nombre && propietario.bloque_nombre.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -202,14 +315,26 @@ const PropertyManagement: React.FC = () => {
                 <Typography variant="h4" component="h1">
                   Gestión de Propiedades
                 </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleCreateUnidad}
-                  disabled={loading}
-                >
-                  Nueva Unidad
-                </Button>
+                {tabValue === 0 && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleCreateUnidad}
+                    disabled={loading}
+                  >
+                    Nueva Unidad
+                  </Button>
+                )}
+                {tabValue === 1 && (
+                  <Button
+                    variant="contained"
+                    startIcon={<PersonAdd />}
+                    onClick={handleCreatePropietario}
+                    disabled={loading}
+                  >
+                    Asignar Propietario
+                  </Button>
+                )}
               </Box>
 
               <Typography variant="body2" color="text.secondary">
@@ -338,9 +463,6 @@ const PropertyManagement: React.FC = () => {
                               <Typography variant="subtitle2">
                                 {unidad.numero}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {unidad.tipo}
-                              </Typography>
                             </Box>
                           </TableCell>
                           <TableCell>
@@ -349,7 +471,7 @@ const PropertyManagement: React.FC = () => {
                                 {unidad.bloque_nombre}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                Piso {unidad.piso}
+                                {unidad.condominio_nombre}
                               </Typography>
                             </Box>
                           </TableCell>
@@ -365,11 +487,11 @@ const PropertyManagement: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                              {unidad.tiene_balcon && (
-                                <Chip label="Balcón" size="small" color="info" />
-                              )}
                               {unidad.tiene_parqueadero && (
                                 <Chip label="Parqueadero" size="small" color="success" />
+                              )}
+                              {unidad.observaciones && (
+                                <Chip label="Con observaciones" size="small" color="warning" />
                               )}
                             </Box>
                           </TableCell>
@@ -428,14 +550,172 @@ const PropertyManagement: React.FC = () => {
 
         {/* Panel de Propietarios */}
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography variant="h6" color="text.secondary">
-              Gestión de Propietarios
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Funcionalidad disponible en próxima versión
-            </Typography>
-          </Box>
+          {/* Controles de búsqueda */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Buscar por nombre, email, unidad o bloque..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    InputProps={{
+                      startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSearch}
+                      disabled={loading}
+                    >
+                      Buscar
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<RefreshIcon />}
+                      onClick={loadPropietarios}
+                      disabled={loading}
+                    >
+                      Actualizar
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Tabla de propietarios */}
+          <Card>
+            <CardContent>
+              <TableContainer component={Paper} variant="outlined">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Propietario</strong></TableCell>
+                      <TableCell><strong>Unidad</strong></TableCell>
+                      <TableCell><strong>Porcentaje</strong></TableCell>
+                      <TableCell><strong>Fechas</strong></TableCell>
+                      <TableCell><strong>Estado</strong></TableCell>
+                      <TableCell align="center"><strong>Acciones</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <CircularProgress />
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredPropietarios.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <Typography color="text.secondary">
+                            No se encontraron propietarios
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredPropietarios.map((propietario) => (
+                        <TableRow key={propietario.id} hover>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="subtitle2">
+                                {propietario.user_full_name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {propietario.user_email}
+                              </Typography>
+                              {propietario.user_telefono && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Tel: {propietario.user_telefono}
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2">
+                                {propietario.bloque_nombre} - {propietario.unidad_numero}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={`${propietario.porcentaje_propiedad}%`}
+                              size="small"
+                              color={propietario.porcentaje_propiedad === 100 ? 'success' : 'warning'}
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2">
+                                Desde: {new Date(propietario.fecha_inicio).toLocaleDateString()}
+                              </Typography>
+                              {propietario.fecha_fin && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Hasta: {new Date(propietario.fecha_fin).toLocaleDateString()}
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={propietario.is_active ? 'Activo' : 'Inactivo'}
+                              size="small"
+                              color={propietario.is_active ? 'success' : 'error'}
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                              <Tooltip title="Editar asignación">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleEditPropietario(propietario)}
+                                  disabled={actionLoading}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title={propietario.is_active ? 'Desactivar' : 'Activar'}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleTogglePropietarioStatus(propietario)}
+                                  disabled={actionLoading}
+                                  color={propietario.is_active ? 'error' : 'success'}
+                                >
+                                  {propietario.is_active ? <PersonOff /> : <PersonAdd />}
+                                </IconButton>
+                              </Tooltip>
+
+                              <Tooltip title="Eliminar asignación">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeletePropietario(propietario)}
+                                  disabled={actionLoading}
+                                  color="error"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
         </TabPanel>
 
         {/* Panel de Residentes */}
@@ -473,6 +753,16 @@ const PropertyManagement: React.FC = () => {
         loading={actionLoading}
       />
 
+      {/* Formulario de propietario */}
+      <PropietarioForm
+        open={isPropietarioFormOpen}
+        mode={propietarioFormMode}
+        propietario={selectedPropietario}
+        onSubmit={handlePropietarioFormSubmit}
+        onClose={handlePropietarioFormClose}
+        loading={actionLoading}
+      />
+
       {/* Dialog de confirmación de eliminación */}
       <Dialog
         open={isDeleteDialogOpen}
@@ -482,11 +772,20 @@ const PropertyManagement: React.FC = () => {
       >
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
-          <Typography>
-            ¿Estás seguro de que deseas eliminar la unidad <strong>{selectedUnidad?.numero}</strong> 
-            del bloque <strong>{selectedUnidad?.bloque_nombre}</strong>?
-            Esta acción no se puede deshacer.
-          </Typography>
+          {selectedUnidad && (
+            <Typography>
+              ¿Estás seguro de que deseas eliminar la unidad <strong>{selectedUnidad.numero}</strong>
+              del bloque <strong>{selectedUnidad.bloque_nombre}</strong>?
+              Esta acción no se puede deshacer.
+            </Typography>
+          )}
+          {selectedPropietario && (
+            <Typography>
+              ¿Estás seguro de que deseas eliminar la asignación del propietario <strong>{selectedPropietario.user_full_name}</strong>
+              a la unidad <strong>{selectedPropietario.bloque_nombre} - {selectedPropietario.unidad_numero}</strong>?
+              Esta acción no se puede deshacer.
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
@@ -496,7 +795,7 @@ const PropertyManagement: React.FC = () => {
             Cancelar
           </Button>
           <Button
-            onClick={confirmDeleteUnidad}
+            onClick={selectedUnidad ? confirmDeleteUnidad : confirmDeletePropietario}
             color="error"
             variant="contained"
             disabled={actionLoading}

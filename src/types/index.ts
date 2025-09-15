@@ -50,6 +50,18 @@ export interface Condominio {
   is_active: boolean;
 }
 
+// Tipos para configuraciones del sistema
+export interface ConfiguracionSistema {
+  id: number;
+  clave: string;
+  valor: string;
+  descripcion?: string;
+  tipo: 'string' | 'integer' | 'float' | 'boolean' | 'json';
+  categoria?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Tipos para autenticación
 export interface LoginCredentials {
   username: string;
@@ -166,12 +178,9 @@ export interface UnidadHabitacional {
 export interface UnidadFormData {
   bloque: number;
   numero: string;
-  piso: number;
-  tipo: 'departamento' | 'casa' | 'oficina' | 'local_comercial';
   area_m2?: number;
   num_habitaciones?: number;
   num_banos?: number;
-  tiene_balcon?: boolean;
   tiene_parqueadero?: boolean;
   observaciones?: string;
   is_active?: boolean;
@@ -231,6 +240,16 @@ export interface Propietario {
   documento_propiedad?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PropietarioFormData {
+  user: number;
+  unidad: number;
+  porcentaje_propiedad: number;
+  fecha_inicio: string;
+  fecha_fin?: string;
+  is_active?: boolean;
+  documento_propiedad?: File;
 }
 
 export interface Residente {

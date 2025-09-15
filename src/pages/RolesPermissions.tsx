@@ -13,6 +13,15 @@ import {
   ListItemText,
   Chip,
   CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Checkbox,
+  Button,
+  Snackbar,
 } from '@mui/material';
 import {
   AdminPanelSettings as AdminIcon,
@@ -22,30 +31,57 @@ import {
   Settings as SettingsIcon,
   Build as BuildIcon,
 } from '@mui/icons-material';
-import { Role } from '../types';
-import { roleService } from '../services/api';
+import { Role, Permission } from '../types';
+import { roleService, permissionService } from '../services/api';
 
 const RolesPermissions: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [rolePermissions, setRolePermissions] = useState<{ [roleId: number]: number[] }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [savingChanges, setSavingChanges] = useState<{ [roleId: number]: boolean }>({});
 
   useEffect(() => {
-    const fetchRoles = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const rolesData = await roleService.getRoles();
+
+        // Cargar roles y permisos en paralelo
+        const [rolesData, permissionsData] = await Promise.all([
+          roleService.getRoles(),
+          permissionService.getPermissions()
+        ]);
+
         setRoles(rolesData);
+        setPermissions(permissionsData);
+
+        // Cargar permisos de cada rol
+        const rolePermissionsMap: { [roleId: number]: number[] } = {};
+
+        for (const role of rolesData) {
+          try {
+            const rolePerms = await roleService.getRolePermissions(role.id);
+            rolePermissionsMap[role.id] = rolePerms.map(p => p.id);
+          } catch (err) {
+            console.error(`Error cargando permisos del rol ${role.nombre}:`, err);
+            rolePermissionsMap[role.id] = [];
+          }
+        }
+
+        setRolePermissions(rolePermissionsMap);
+
       } catch (err: any) {
-        setError(err.message || 'Error al cargar los roles');
-        console.error('Error fetching roles:', err);
+        setError(err.message || 'Error al cargar los datos');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRoles();
+    fetchData();
   }, []);
 
   // Función para asignar colores a los roles
@@ -62,6 +98,49 @@ const RolesPermissions: React.FC = () => {
     };
     return colorMap[roleName] || 'default';
   };
+
+  // Función para verificar si un rol tiene un permiso específico
+  const hasPermission = (roleId: number, permissionId: number): boolean => {
+    return rolePermissions[roleId]?.includes(permissionId) || false;
+  };
+
+  // Función para manejar el cambio de permisos
+  const handlePermissionChange = async (roleId: number, permissionId: number, hasIt: boolean) => {
+    try {
+      setSavingChanges(prev => ({ ...prev, [roleId]: true }));
+
+      if (hasIt) {
+        await roleService.assignPermissionToRole(roleId, permissionId);
+      } else {
+        await roleService.removePermissionFromRole(roleId, permissionId);
+      }
+
+      // Actualizar el estado local
+      setRolePermissions(prev => ({
+        ...prev,
+        [roleId]: hasIt
+          ? [...(prev[roleId] || []), permissionId]
+          : (prev[roleId] || []).filter(id => id !== permissionId)
+      }));
+
+      setSuccessMessage('Permisos actualizados correctamente');
+
+    } catch (err: any) {
+      setError(err.message || 'Error al actualizar permisos');
+      console.error('Error updating permissions:', err);
+    } finally {
+      setSavingChanges(prev => ({ ...prev, [roleId]: false }));
+    }
+  };
+
+  // Agrupar permisos por módulo
+  const groupedPermissions = permissions.reduce((acc, permission) => {
+    if (!acc[permission.modulo]) {
+      acc[permission.modulo] = [];
+    }
+    acc[permission.modulo].push(permission);
+    return acc;
+  }, {} as { [module: string]: Permission[] });
 
   const modulos = [
     { nombre: 'usuarios', icon: <PersonIcon />, permisos: ['crear', 'leer', 'actualizar', 'eliminar'] },
@@ -210,7 +289,7 @@ const RolesPermissions: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Matriz de Permisos (Placeholder) */}
+        {/* Matriz de Permisos Interactiva */}
         <Grid size={{ xs: 12 }}>
           <Card>
             <CardContent>
@@ -219,27 +298,127 @@ const RolesPermissions: React.FC = () => {
                 Matriz de Roles vs Permisos
               </Typography>
 
-              <Alert severity="warning" sx={{ mt: 2 }}>
+              <Alert severity="info" sx={{ mt: 2, mb: 3 }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Funcionalidad en Desarrollo
+                  Gestión Interactiva de Permisos
                 </Typography>
                 <Typography variant="body2">
-                  La matriz interactiva para asignar permisos específicos a cada rol estará disponible en la próxima versión.
-                  Actualmente los permisos están configurados según la tabla <code>rol_permisos</code> de la base de datos.
+                  Haz clic en los checkboxes para asignar o quitar permisos específicos a cada rol.
+                  Los cambios se guardan automáticamente.
                 </Typography>
               </Alert>
 
-              <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Configuración actual:</strong> Los permisos están definidos en el backend Django según
-                  la relación many-to-many entre las tablas <code>roles</code> y <code>permisos</code> mediante
-                  la tabla <code>rol_permisos</code>.
-                </Typography>
-              </Paper>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', minWidth: 200 }}>
+                          Permisos / Roles
+                        </TableCell>
+                        {roles.map((role) => (
+                          <TableCell key={role.id} align="center" sx={{ fontWeight: 'bold', minWidth: 120 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <Typography variant="caption" sx={{ textAlign: 'center' }}>
+                                {role.nombre}
+                              </Typography>
+                              <Chip
+                                label={`ID: ${role.id}`}
+                                size="small"
+                                color={getRoleColor(role.nombre)}
+                                variant="outlined"
+                                sx={{ mt: 0.5 }}
+                              />
+                            </Box>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Object.entries(groupedPermissions).map(([module, modulePermissions]) => (
+                        <React.Fragment key={module}>
+                          {/* Encabezado del módulo */}
+                          <TableRow>
+                            <TableCell
+                              colSpan={roles.length + 1}
+                              sx={{
+                                backgroundColor: 'primary.light',
+                                color: 'primary.contrastText',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              📁 {module}
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Permisos del módulo */}
+                          {modulePermissions.map((permission) => (
+                            <TableRow key={permission.id} hover>
+                              <TableCell>
+                                <Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                                    {permission.nombre}
+                                  </Typography>
+                                  {permission.descripcion && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {permission.descripcion}
+                                    </Typography>
+                                  )}
+                                  <Chip
+                                    label={permission.codigo}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ ml: 1 }}
+                                  />
+                                </Box>
+                              </TableCell>
+
+                              {roles.map((role) => (
+                                <TableCell key={role.id} align="center">
+                                  <Checkbox
+                                    checked={hasPermission(role.id, permission.id)}
+                                    onChange={(e) => handlePermissionChange(role.id, permission.id, e.target.checked)}
+                                    disabled={savingChanges[role.id]}
+                                    color="primary"
+                                  />
+                                  {savingChanges[role.id] && (
+                                    <CircularProgress size={12} sx={{ ml: 1 }} />
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Notificaciones */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
+      />
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={5000}
+        onClose={() => setError(null)}
+        message={error}
+        sx={{ '& .MuiSnackbarContent-root': { backgroundColor: 'error.main' } }}
+      />
     </Box>
   );
 };

@@ -32,6 +32,9 @@ import {
   ExpandMore,
   VpnKey as VpnKeyIcon,
   Map as MapIcon,
+  AdminPanelSettings as AdminIcon,
+  Tune as TuneIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -75,14 +78,26 @@ const menuItems: MenuItemType[] = [
     ],
   },
   {
-    text: 'Propiedades',
-    icon: <HomeIcon />,
-    path: '/dashboard/properties',
-  },
-  {
-    text: 'Comunicados',
-    icon: <Notifications />,
-    path: '/dashboard/communications',
+    text: 'Gestión Administración Básica',
+    icon: <AdminIcon />,
+    children: [
+      {
+        text: 'Gestionar Configuración del Sistema',
+        icon: <TuneIcon />,
+        path: '/dashboard/system-config',
+        roles: ['Administrador'],
+      },
+      {
+        text: 'Comunicados',
+        icon: <Notifications />,
+        path: '/dashboard/communications',
+      },
+      {
+        text: 'Gestionar Perfil de Usuario',
+        icon: <PersonIcon />,
+        path: '/dashboard/user-profile',
+      },
+    ],
   },
 ];
 
@@ -143,31 +158,48 @@ const Dashboard: React.FC = () => {
     }));
   };
 
+  // Función para verificar si el usuario tiene acceso a un item
+  const hasItemAccess = (item: MenuItemType): boolean => {
+    if (!item.roles) return true;
+    if (!user) return false;
+
+    const userRole = user.role_name || user.role?.nombre || '';
+    const isAdmin = item.roles.includes('Administrador') && (
+      userRole === 'Administrador' ||
+      userRole === 'Super Admin' ||
+      user.is_staff === true
+    );
+
+    return item.roles.includes(userRole) || isAdmin;
+  };
+
   // Filtrar elementos del menú según el rol del usuario usando useMemo
   const filteredMenuItems = useMemo(() => {
     console.log('Recalculando filteredMenuItems para usuario:', user);
 
-    return menuItems.filter(item => {
-      if (!item.roles) return true;
-      if (!user) return false;
+    return menuItems.map(item => {
+      // Si el item tiene roles específicos y el usuario no tiene acceso, no mostrarlo
+      if (item.roles && !hasItemAccess(item)) {
+        return null;
+      }
 
-      // Verificar múltiples fuentes del rol del usuario
-      const userRole = user.role_name || user.role?.nombre || '';
+      // Si el item tiene hijos, filtrar los hijos también
+      if (item.children) {
+        const filteredChildren = item.children.filter(child => hasItemAccess(child));
 
-      console.log(`Evaluando item "${item.text}" - Roles requeridos:`, item.roles, 'Usuario rol:', userRole);
+        // Si no hay hijos visibles, no mostrar el item padre
+        if (filteredChildren.length === 0) {
+          return null;
+        }
 
-      // También verificar si es staff para dar acceso de administrador
-      const isAdmin = item.roles.includes('Administrador') && (
-        userRole === 'Administrador' ||
-        userRole === 'Super Admin' ||
-        user.is_staff === true
-      );
+        return {
+          ...item,
+          children: filteredChildren
+        };
+      }
 
-      const hasAccess = item.roles.includes(userRole) || isAdmin;
-      console.log(`Item "${item.text}" acceso:`, hasAccess);
-
-      return hasAccess;
-    });
+      return item;
+    }).filter(Boolean) as MenuItemType[];
   }, [user]); // Dependencia en user para que se recalcule cuando cambie
 
   // Contenido del drawer
@@ -284,8 +316,9 @@ const Dashboard: React.FC = () => {
             {location.pathname === '/dashboard/users' && 'Gestión de Usuarios'}
             {location.pathname === '/dashboard/roles-permissions' && 'Gestión de Roles y Permisos'}
             {location.pathname === '/dashboard/units-map' && 'Gestionar Unidades Habitacionales'}
-            {location.pathname === '/dashboard/properties' && 'Propiedades'}
             {location.pathname === '/dashboard/communications' && 'Comunicados'}
+            {location.pathname === '/dashboard/system-config' && 'Gestionar Configuración del Sistema'}
+            {location.pathname === '/dashboard/user-profile' && 'Gestionar Perfil de Usuario'}
           </Typography>
 
           {/* Información del usuario */}

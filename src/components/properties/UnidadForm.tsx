@@ -40,12 +40,9 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
   const [formData, setFormData] = useState<UnidadFormData>({
     bloque: 0,
     numero: '',
-    piso: 1,
-    tipo: 'departamento',
     area_m2: undefined,
     num_habitaciones: undefined,
     num_banos: undefined,
-    tiene_balcon: false,
     tiene_parqueadero: false,
     observaciones: '',
     is_active: true,
@@ -68,12 +65,9 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
       setFormData({
         bloque: unidad.bloque,
         numero: unidad.numero,
-        piso: unidad.piso,
-        tipo: unidad.tipo,
         area_m2: unidad.area_m2,
         num_habitaciones: unidad.num_habitaciones,
         num_banos: unidad.num_banos,
-        tiene_balcon: unidad.tiene_balcon,
         tiene_parqueadero: unidad.tiene_parqueadero,
         observaciones: unidad.observaciones,
         is_active: unidad.is_active,
@@ -83,12 +77,9 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
       setFormData({
         bloque: 0,
         numero: '',
-        piso: 1,
-        tipo: 'departamento',
         area_m2: undefined,
         num_habitaciones: undefined,
         num_banos: undefined,
-        tiene_balcon: false,
         tiene_parqueadero: false,
         observaciones: '',
         is_active: true,
@@ -130,11 +121,6 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
     
     if (!formData.numero.trim()) {
       setError('El número de unidad es requerido');
-      return;
-    }
-    
-    if (formData.piso < 1) {
-      setError('El piso debe ser mayor a 0');
       return;
     }
 
@@ -204,34 +190,6 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
               />
             </Grid>
 
-            {/* Piso y Tipo */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Piso"
-                value={formData.piso}
-                onChange={(e) => handleInputChange('piso', parseInt(e.target.value) || 1)}
-                inputProps={{ min: 1 }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Tipo de Unidad</InputLabel>
-                <Select
-                  value={formData.tipo}
-                  label="Tipo de Unidad"
-                  onChange={(e) => handleInputChange('tipo', e.target.value)}
-                >
-                  <MenuItem value="departamento">Departamento</MenuItem>
-                  <MenuItem value="casa">Casa</MenuItem>
-                  <MenuItem value="oficina">Oficina</MenuItem>
-                  <MenuItem value="local_comercial">Local Comercial</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
 
             {/* Área y Habitaciones */}
             <Grid size={{ xs: 12, md: 4 }}>
@@ -273,23 +231,13 @@ const UnidadForm: React.FC<UnidadFormProps> = ({
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={formData.tiene_balcon}
-                      onChange={(e) => handleInputChange('tiene_balcon', e.target.checked)}
-                    />
-                  }
-                  label="Tiene balcón"
-                />
-                
-                <FormControlLabel
-                  control={
-                    <Switch
                       checked={formData.tiene_parqueadero}
                       onChange={(e) => handleInputChange('tiene_parqueadero', e.target.checked)}
                     />
                   }
                   label="Tiene parqueadero"
                 />
-                
+
                 {mode === 'edit' && (
                   <FormControlLabel
                     control={
