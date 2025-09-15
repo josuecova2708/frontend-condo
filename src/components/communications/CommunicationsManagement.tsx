@@ -22,6 +22,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,6 +35,7 @@ import {
   Campaign as CampaignIcon,
   Build as BuildIcon,
   MarkEmailRead as ReadIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { communicationService, handleApiError } from '../../services/api';
 import { AvisoFormData, AvisoComunicado } from '../../types';
@@ -46,6 +49,9 @@ const CommunicationsManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+  const [avisoToDelete, setAvisoToDelete] = useState<AvisoComunicado | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Datos mock para demostración
   useEffect(() => {
@@ -89,6 +95,30 @@ const CommunicationsManagement: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const handleDeleteClick = (aviso: AvisoComunicado) => {
+    setAvisoToDelete(aviso);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!avisoToDelete) return;
+
+    try {
+      await communicationService.deleteAviso(avisoToDelete.id);
+      setSuccessMessage(`Aviso "${avisoToDelete.titulo}" eliminado exitosamente`);
+      setDeleteDialogOpen(false);
+      setAvisoToDelete(null);
+      await loadAvisos();
+    } catch (error: any) {
+      setError('Error al eliminar el aviso: ' + handleApiError(error));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setAvisoToDelete(null);
   };
 
   const getPrioridadColor = (prioridad: string) => {
@@ -292,6 +322,17 @@ const CommunicationsManagement: React.FC = () => {
                             <IconButton size="small">
                               <NotificationIcon />
                             </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(aviso);
+                              }}
+                              title="Eliminar aviso"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
                           </Box>
                         </Box>
                       }
@@ -330,6 +371,38 @@ const CommunicationsManagement: React.FC = () => {
         onSubmit={handleCreateAvisoSubmit}
         onClose={handleCloseForm}
         loading={formLoading}
+      />
+
+      {/* Dialog de confirmación para eliminar */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Confirmar eliminación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            ¿Está seguro que desea eliminar el aviso "{avisoToDelete?.titulo}"?
+            Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel}>Cancelar</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" autoFocus>
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notificación de éxito */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => setSuccessMessage(null)}
+        message={successMessage}
       />
     </Box>
   );

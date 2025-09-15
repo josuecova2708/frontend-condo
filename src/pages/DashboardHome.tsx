@@ -29,25 +29,25 @@ const DashboardHome: React.FC = () => {
       path: '/dashboard/users',
     },
     {
-      title: 'Propiedades',
+      title: 'Unidades Habitacionales',
       description: 'Gestiona unidades habitacionales y propietarios',
-      icon: <HomeIcon sx={{ fontSize: 40, color: 'warning.main' }} />,
-      status: 'En desarrollo',
-      path: '/dashboard/properties',
+      icon: <HomeIcon sx={{ fontSize: 40, color: 'success.main' }} />,
+      status: 'Implementado',
+      path: '/dashboard/units-map',
     },
     {
       title: 'Comunicados',
       description: 'Publica y gestiona avisos y comunicados',
       icon: <NotificationsIcon sx={{ fontSize: 40, color: 'info.main' }} />,
-      status: 'Pendiente',
+      status: 'Implementado',
       path: '/dashboard/communications',
     },
     {
       title: 'Configuración',
       description: 'Configuración del sistema y preferencias',
       icon: <SettingsIcon sx={{ fontSize: 40, color: 'secondary.main' }} />,
-      status: 'Pendiente',
-      path: '/dashboard/settings',
+      status: 'Implementado',
+      path: '/dashboard/system-config',
     },
   ];
 
@@ -92,13 +92,7 @@ const DashboardHome: React.FC = () => {
               <Divider sx={{ my: 2 }} />
               
               <Typography variant="body1" paragraph>
-                Bienvenido al sistema Smart Condominium. Desde aquí puedes acceder a todas las funcionalidades
-                disponibles para gestionar tu condominio de manera inteligente.
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary">
-                <strong>CICLO 1 - Funcionalidades Base:</strong> Sistema de autenticación, gestión de usuarios, 
-                configuración básica del sistema y comunicación entre residentes.
+                Desde aquí puedes acceder a todas las funcionalidades disponibles para gestionar tu condominio.
               </Typography>
             </CardContent>
           </Card>
@@ -158,112 +152,6 @@ const DashboardHome: React.FC = () => {
             </Card>
           </Grid>
         ))}
-
-        {/* Estadísticas rápidas */}
-        <Grid size={{ xs: 12 }}>
-          <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 2 }}>
-            Estado del Sistema
-          </Typography>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="primary.main" gutterBottom>
-                1
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Casos de Uso Implementados
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                CU01 - Gestionar Usuarios
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="info.main" gutterBottom>
-                6
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Casos de Uso Totales
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Planificados para CICLO 1
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="success.main" gutterBottom>
-                17%
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Progreso Completado
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                CICLO 1 en desarrollo
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="secondary.main" gutterBottom>
-                API
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Backend Activo
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Django REST Framework
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Información técnica */}
-        <Grid size={{ xs: 12 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Información Técnica
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="body2" paragraph>
-                    <strong>Frontend:</strong> React 18+ con TypeScript, Material-UI
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    <strong>Backend:</strong> Django 4.2+ con Django REST Framework
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    <strong>Autenticación:</strong> JWT (JSON Web Tokens)
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="body2" paragraph>
-                    <strong>Base de Datos:</strong> SQLite (desarrollo) / PostgreSQL (producción)
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    <strong>Estado:</strong> Prototipo funcional - CICLO 1
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    <strong>Última actualización:</strong> {new Date().toLocaleDateString('es-ES')}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
     </Box>
   );
