@@ -1,0 +1,283 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Chip,
+  Alert,
+  CircularProgress,
+  Tooltip,
+  Pagination,
+  Stack,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  CheckCircle as CheckIcon,
+  AttachMoney as MoneyIcon,
+} from '@mui/icons-material';
+import {
+  Infraccion,
+  FiltrosInfracciones,
+  PaginatedResponse,
+} from '../../types';
+import { financeService, handleApiError } from '../../services/api';
+import InfraccionForm from './InfraccionForm';
+
+const InfraccionesManagement: React.FC = () => {
+  // Estado para infracciones
+  const [infracciones, setInfracciones] = useState<PaginatedResponse<Infraccion>>({
+    count: 0,
+    next: null,
+    previous: null,
+    results: [],
+  });
+  const [infraccionesLoading, setInfraccionesLoading] = useState(false);
+  const [infraccionesPage, setInfraccionesPage] = useState(1);
+  const [filtrosInfracciones, setFiltrosInfracciones] = useState<FiltrosInfracciones>({});
+
+  // Estado para modales
+  const [openInfraccionDialog, setOpenInfraccionDialog] = useState(false);
+  const [selectedInfraccion, setSelectedInfraccion] = useState<Infraccion | null>(null);
+
+  // Estado general
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadInfracciones();
+  }, []);
+
+  const loadInfracciones = async (page: number = 1, filtros?: FiltrosInfracciones) => {
+    setInfraccionesLoading(true);
+    try {
+      const data = await financeService.getInfracciones(page, filtros);
+      setInfracciones(data || { count: 0, next: null, previous: null, results: [] });
+      setInfraccionesPage(page);
+    } catch (error) {
+      setError(handleApiError(error));
+      setInfracciones({ count: 0, next: null, previous: null, results: [] });
+    } finally {
+      setInfraccionesLoading(false);
+    }
+  };
+
+  const getEstadoChip = (estado: string) => {
+    const colors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' } = {
+      registrada: 'info',
+      en_revision: 'warning',
+      confirmada: 'primary',
+      rechazada: 'error',
+      multa_aplicada: 'success',
+      pagada: 'success',
+    };
+
+    return (
+      <Chip
+        label={estado}
+        color={colors[estado] || 'default'}
+        size="small"
+      />
+    );
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-BO', {
+      style: 'currency',
+      currency: 'BOB',
+    }).format(amount);
+  };
+
+  const handleConfirmarInfraccion = async (id: number) => {
+    try {
+      await financeService.confirmarInfraccion(id);
+      setSuccess('Infracción confirmada exitosamente');
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      setError(handleApiError(error));
+    }
+  };
+
+  const handleAplicarMulta = async (infraccionId: number) => {
+    try {
+      await financeService.aplicarMulta({ infraccion_id: infraccionId });
+      setSuccess('Multa aplicada exitosamente');
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      setError(handleApiError(error));
+    }
+  };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      )}
+
+      <Card>
+        <CardContent>
+          <Typography variant="h4" gutterBottom>
+            Gestión de Infracciones
+          </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setSelectedInfraccion(null);
+                  setOpenInfraccionDialog(true);
+                }}
+              >
+                Nueva Infracción
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={() => loadInfracciones(1, filtrosInfracciones)}
+              >
+                Actualizar
+              </Button>
+            </Stack>
+          </Box>
+
+          {infraccionesLoading ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Propietario</TableCell>
+                      <TableCell>Unidad</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Estado</TableCell>
+                      <TableCell>Monto</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {infracciones.results?.map((infraccion) => (
+                      <TableRow key={infraccion.id}>
+                        <TableCell>{infraccion.propietario_nombre || '-'}</TableCell>
+                        <TableCell>{infraccion.unidad_numero || '-'}</TableCell>
+                        <TableCell>{infraccion.tipo_infraccion_display || '-'}</TableCell>
+                        <TableCell>
+                          <Tooltip title={infraccion.descripcion || ''}>
+                            <span>
+                              {(infraccion.descripcion || '').length > 50
+                                ? `${(infraccion.descripcion || '').substring(0, 50)}...`
+                                : infraccion.descripcion || ''}
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          {infraccion.fecha_infraccion ? new Date(infraccion.fecha_infraccion).toLocaleDateString() : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {getEstadoChip(infraccion.estado || 'registrada')}
+                        </TableCell>
+                        <TableCell>
+                          {infraccion.monto_multa ? formatCurrency(infraccion.monto_multa) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1}>
+                            <Tooltip title="Editar">
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setSelectedInfraccion(infraccion);
+                                  setOpenInfraccionDialog(true);
+                                }}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            {(infraccion.estado || '') === 'registrada' && (
+                              <Tooltip title="Confirmar">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleConfirmarInfraccion(infraccion.id)}
+                                >
+                                  <CheckIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {(infraccion.estado || '') === 'confirmada' && infraccion.puede_aplicar_multa && (
+                              <Tooltip title="Aplicar Multa">
+                                <IconButton
+                                  size="small"
+                                  color="warning"
+                                  onClick={() => handleAplicarMulta(infraccion.id)}
+                                >
+                                  <MoneyIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    )) || []}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {infracciones.count > 0 && (
+                <Box display="flex" justifyContent="center" mt={2}>
+                  <Pagination
+                    count={Math.ceil(infracciones.count / 10)}
+                    page={infraccionesPage}
+                    onChange={(e, page) => loadInfracciones(page, filtrosInfracciones)}
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Diálogo de infracción */}
+      {openInfraccionDialog && (
+        <InfraccionForm
+          open={openInfraccionDialog}
+          onClose={() => setOpenInfraccionDialog(false)}
+          infraccion={selectedInfraccion}
+          onSuccess={() => {
+            loadInfracciones(infraccionesPage, filtrosInfracciones);
+            setOpenInfraccionDialog(false);
+            setSuccess(selectedInfraccion ? 'Infracción actualizada' : 'Infracción creada');
+          }}
+        />
+      )}
+    </Box>
+  );
+};
+
+export default InfraccionesManagement;

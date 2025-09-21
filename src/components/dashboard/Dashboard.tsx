@@ -35,6 +35,10 @@ import {
   AdminPanelSettings as AdminIcon,
   Tune as TuneIcon,
   Person as PersonIcon,
+  AttachMoney as FinanceIcon,
+  Warning as WarningIcon,
+  Receipt as ReceiptIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -96,6 +100,28 @@ const menuItems: MenuItemType[] = [
         text: 'Gestionar Perfil de Usuario',
         icon: <PersonIcon />,
         path: '/dashboard/user-profile',
+      },
+    ],
+  },
+  {
+    text: 'Gestión Financiera',
+    icon: <FinanceIcon />,
+    roles: ['Administrador'],
+    children: [
+      {
+        text: 'Infracciones',
+        icon: <WarningIcon />,
+        path: '/dashboard/infracciones',
+      },
+      {
+        text: 'Cargos',
+        icon: <ReceiptIcon />,
+        path: '/dashboard/cargos',
+      },
+      {
+        text: 'Configuración',
+        icon: <SettingsIcon />,
+        path: '/dashboard/finances',
       },
     ],
   },
@@ -319,6 +345,9 @@ const Dashboard: React.FC = () => {
             {location.pathname === '/dashboard/communications' && 'Comunicados'}
             {location.pathname === '/dashboard/system-config' && 'Gestionar Configuración del Sistema'}
             {location.pathname === '/dashboard/user-profile' && 'Gestionar Perfil de Usuario'}
+            {location.pathname === '/dashboard/finances' && 'Configuración Financiera'}
+            {location.pathname === '/dashboard/infracciones' && 'Gestión de Infracciones'}
+            {location.pathname === '/dashboard/cargos' && 'Gestión de Cargos'}
           </Typography>
 
           {/* Información del usuario */}

@@ -19,7 +19,25 @@ import {
   Residente,
   AvisoComunicado,
   AvisoFormData,
-  MapLayoutResponse
+  MapLayoutResponse,
+  // Finance module types
+  Infraccion,
+  InfraccionFormData,
+  Cargo,
+  CargoFormData,
+  ConfiguracionMultas,
+  ConfiguracionMultasFormData,
+  AplicarMultaData,
+  ProcesarPagoData,
+  ResultadoPago,
+  EstadisticasInfracciones,
+  ResumenPropietario,
+  FiltrosInfracciones,
+  FiltrosCargos,
+  TipoInfraccion,
+  EstadoInfraccion,
+  TipoCargo,
+  EstadoCargo
 } from '../types';
 
 // Configuración base de Axios
@@ -551,6 +569,195 @@ export const handleApiError = (error: any): string => {
   }
   
   return 'Ha ocurrido un error inesperado';
+};
+
+// ======================
+// SERVICIOS FINANCIEROS - CU11
+// ======================
+export const financeService = {
+  // ========== INFRACCIONES ==========
+  async getInfracciones(page: number = 1, filtros?: FiltrosInfracciones): Promise<PaginatedResponse<Infraccion>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+
+    if (filtros) {
+      if (filtros.search) params.append('search', filtros.search);
+      if (filtros.estado?.length) params.append('estado', filtros.estado.join(','));
+      if (filtros.tipo_infraccion?.length) params.append('tipo_infraccion', filtros.tipo_infraccion.join(','));
+      if (filtros.propietario) params.append('propietario', filtros.propietario.toString());
+      if (filtros.unidad) params.append('unidad', filtros.unidad.toString());
+      if (filtros.es_reincidente !== undefined) params.append('es_reincidente', filtros.es_reincidente.toString());
+      if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde);
+      if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta);
+    }
+
+    const response: AxiosResponse<PaginatedResponse<Infraccion>> = await api.get(`/finances/api/infracciones/?${params}`);
+    return response.data;
+  },
+
+  async getInfraccion(id: number): Promise<Infraccion> {
+    const response: AxiosResponse<Infraccion> = await api.get(`/finances/api/infracciones/${id}/`);
+    return response.data;
+  },
+
+  async createInfraccion(data: InfraccionFormData): Promise<Infraccion> {
+    const response: AxiosResponse<Infraccion> = await api.post('/finances/api/infracciones/', data);
+    return response.data;
+  },
+
+  async updateInfraccion(id: number, data: Partial<InfraccionFormData>): Promise<Infraccion> {
+    const response: AxiosResponse<Infraccion> = await api.patch(`/finances/api/infracciones/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteInfraccion(id: number): Promise<void> {
+    await api.delete(`/finances/api/infracciones/${id}/`);
+  },
+
+  async getInfraccionesPendientes(): Promise<Infraccion[]> {
+    const response: AxiosResponse<Infraccion[]> = await api.get('/finances/api/infracciones/pendientes/');
+    return response.data;
+  },
+
+  async aplicarMulta(data: AplicarMultaData): Promise<Cargo> {
+    const response: AxiosResponse<Cargo> = await api.post('/finances/api/infracciones/aplicar_multa/', data);
+    return response.data;
+  },
+
+  async confirmarInfraccion(id: number, observaciones?: string): Promise<Infraccion> {
+    const response: AxiosResponse<Infraccion> = await api.post(`/finances/api/infracciones/${id}/confirmar/`, {
+      observaciones_admin: observaciones
+    });
+    return response.data;
+  },
+
+  async rechazarInfraccion(id: number, observaciones: string): Promise<Infraccion> {
+    const response: AxiosResponse<Infraccion> = await api.post(`/finances/api/infracciones/${id}/rechazar/`, {
+      observaciones_admin: observaciones
+    });
+    return response.data;
+  },
+
+  // ========== CARGOS ==========
+  async getCargos(page: number = 1, filtros?: FiltrosCargos): Promise<PaginatedResponse<Cargo>> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+
+    if (filtros) {
+      if (filtros.search) params.append('search', filtros.search);
+      if (filtros.estado?.length) params.append('estado', filtros.estado.join(','));
+      if (filtros.tipo_cargo?.length) params.append('tipo_cargo', filtros.tipo_cargo.join(','));
+      if (filtros.propietario) params.append('propietario', filtros.propietario.toString());
+      if (filtros.unidad) params.append('unidad', filtros.unidad.toString());
+      if (filtros.es_recurrente !== undefined) params.append('es_recurrente', filtros.es_recurrente.toString());
+      if (filtros.esta_vencido !== undefined) params.append('esta_vencido', filtros.esta_vencido.toString());
+      if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde);
+      if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta);
+    }
+
+    const response: AxiosResponse<PaginatedResponse<Cargo>> = await api.get(`/finances/api/cargos/?${params}`);
+    return response.data;
+  },
+
+  async getCargo(id: number): Promise<Cargo> {
+    const response: AxiosResponse<Cargo> = await api.get(`/finances/api/cargos/${id}/`);
+    return response.data;
+  },
+
+  async createCargo(data: CargoFormData): Promise<Cargo> {
+    const response: AxiosResponse<Cargo> = await api.post('/finances/api/cargos/', data);
+    return response.data;
+  },
+
+  async updateCargo(id: number, data: Partial<CargoFormData>): Promise<Cargo> {
+    const response: AxiosResponse<Cargo> = await api.patch(`/finances/api/cargos/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteCargo(id: number): Promise<void> {
+    await api.delete(`/finances/api/cargos/${id}/`);
+  },
+
+  async getCargosVencidos(): Promise<Cargo[]> {
+    const response: AxiosResponse<Cargo[]> = await api.get('/finances/api/cargos/vencidos/');
+    return response.data;
+  },
+
+  async procesarPago(data: ProcesarPagoData): Promise<ResultadoPago> {
+    const response: AxiosResponse<ResultadoPago> = await api.post('/finances/api/cargos/procesar_pago/', data);
+    return response.data;
+  },
+
+  async generarIntereses(): Promise<{ cargos_generados: number; total_intereses: number }> {
+    const response = await api.post('/finances/api/cargos/generar_intereses/');
+    return response.data;
+  },
+
+  // ========== CONFIGURACIÓN MULTAS ==========
+  async getConfiguracionMultas(): Promise<ConfiguracionMultas[]> {
+    const response: AxiosResponse<ConfiguracionMultas[]> = await api.get('/finances/api/configuracion-multas/');
+    // Asegurar que siempre devolvemos un array
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  async getConfiguracionMulta(id: number): Promise<ConfiguracionMultas> {
+    const response: AxiosResponse<ConfiguracionMultas> = await api.get(`/finances/api/configuracion-multas/${id}/`);
+    return response.data;
+  },
+
+  async createConfiguracionMulta(data: ConfiguracionMultasFormData): Promise<ConfiguracionMultas> {
+    const response: AxiosResponse<ConfiguracionMultas> = await api.post('/finances/api/configuracion-multas/', data);
+    return response.data;
+  },
+
+  async updateConfiguracionMulta(id: number, data: Partial<ConfiguracionMultasFormData>): Promise<ConfiguracionMultas> {
+    const response: AxiosResponse<ConfiguracionMultas> = await api.patch(`/finances/api/configuracion-multas/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteConfiguracionMulta(id: number): Promise<void> {
+    await api.delete(`/finances/api/configuracion-multas/${id}/`);
+  },
+
+  // ========== ESTADÍSTICAS Y REPORTES ==========
+  async getEstadisticasInfracciones(): Promise<EstadisticasInfracciones> {
+    const response: AxiosResponse<EstadisticasInfracciones> = await api.get('/finances/api/infracciones/estadisticas/');
+    return response.data;
+  },
+
+  async getResumenPorPropietario(): Promise<ResumenPropietario[]> {
+    const response: AxiosResponse<ResumenPropietario[]> = await api.get('/finances/api/cargos/resumen_por_propietario/');
+    return response.data;
+  },
+
+  async getDetallesPropietario(propietarioId: number): Promise<{
+    propietario: Propietario;
+    infracciones: Infraccion[];
+    cargos: Cargo[];
+    total_pendiente: number;
+    total_vencido: number;
+  }> {
+    const response = await api.get(`/finances/api/propietarios/${propietarioId}/detalle-financiero/`);
+    return response.data;
+  },
+
+  // ========== UTILIDADES ==========
+  async getMontoMulta(tipoInfraccion: TipoInfraccion, esReincidente: boolean = false): Promise<{ monto: number }> {
+    const response = await api.get(`/finances/api/configuracion-multas/calcular-monto/`, {
+      params: { tipo_infraccion: tipoInfraccion, es_reincidente: esReincidente }
+    });
+    return response.data;
+  },
+
+  async validarInfraccion(data: InfraccionFormData): Promise<{
+    es_valida: boolean;
+    errores?: string[];
+    monto_sugerido?: number;
+    es_reincidente?: boolean;
+  }> {
+    const response = await api.post('/finances/api/infracciones/validar/', data);
+    return response.data;
+  }
 };
 
 // ======================

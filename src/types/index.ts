@@ -319,3 +319,245 @@ export interface Notification {
   message: string;
   duration?: number;
 }
+
+// ===============================
+// TIPOS PARA MÓDULO FINANCIERO (CU11)
+// ===============================
+
+// Enums para infracciones
+export type TipoInfraccion =
+  | 'ruido_excesivo'
+  | 'uso_inadecuado_areas'
+  | 'mascota_sin_correa'
+  | 'basura_horario'
+  | 'parqueadero_incorrecto'
+  | 'modificacion_sin_permiso'
+  | 'otros';
+
+export type EstadoInfraccion =
+  | 'registrada'
+  | 'en_revision'
+  | 'confirmada'
+  | 'rechazada'
+  | 'multa_aplicada'
+  | 'pagada';
+
+export type TipoCargo =
+  | 'cuota_mensual'
+  | 'expensa_extraordinaria'
+  | 'multa'
+  | 'interes_mora'
+  | 'otros';
+
+export type EstadoCargo =
+  | 'pendiente'
+  | 'parcialmente_pagado'
+  | 'pagado'
+  | 'vencido'
+  | 'cancelado';
+
+// Tipos para infracciones
+export interface Infraccion {
+  id: number;
+  propietario: number;
+  unidad: number;
+  tipo_infraccion: TipoInfraccion;
+  descripcion: string;
+  fecha_infraccion: string;
+  evidencia_url?: string;
+  reportado_por?: number;
+  monto_multa?: number;
+  fecha_limite_pago?: string;
+  estado: EstadoInfraccion;
+  observaciones_admin?: string;
+  es_reincidente: boolean;
+  created_at: string;
+  updated_at: string;
+
+  // Campos relacionados del serializer
+  propietario_info?: Propietario;
+  unidad_info?: UnidadHabitacional;
+  reportado_por_info?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    email: string;
+  };
+
+  // Campos calculados
+  puede_aplicar_multa?: boolean;
+  dias_para_pago?: number;
+  esta_vencida?: boolean;
+  tipo_infraccion_display?: string;
+  estado_display?: string;
+
+  // Campos para el list serializer
+  propietario_nombre?: string;
+  unidad_numero?: string;
+  bloque_nombre?: string;
+}
+
+// Tipos para cargos
+export interface Cargo {
+  id: number;
+  propietario: number;
+  unidad: number;
+  concepto: string;
+  tipo_cargo: TipoCargo;
+  monto: number;
+  moneda: string;
+  fecha_emision: string;
+  fecha_vencimiento: string;
+  estado: EstadoCargo;
+  es_recurrente: boolean;
+  periodo?: string;
+  infraccion?: number;
+  monto_pagado: number;
+  tasa_interes_mora: number;
+  observaciones?: string;
+  created_at: string;
+  updated_at: string;
+
+  // Campos relacionados
+  propietario_info?: Propietario;
+  unidad_info?: UnidadHabitacional;
+  infraccion_info?: Infraccion;
+
+  // Campos calculados
+  saldo_pendiente?: number;
+  esta_vencido?: boolean;
+  dias_vencido?: number;
+  interes_mora_calculado?: number;
+  monto_total_con_intereses?: number;
+  tipo_cargo_display?: string;
+  estado_display?: string;
+
+  // Campos para el list serializer
+  propietario_nombre?: string;
+  unidad_numero?: string;
+  bloque_nombre?: string;
+}
+
+// Tipos para configuración de multas
+export interface ConfiguracionMultas {
+  id: number;
+  tipo_infraccion: TipoInfraccion;
+  monto_base: number;
+  monto_reincidencia: number;
+  dias_para_pago: number;
+  es_activa: boolean;
+  descripcion?: string;
+  created_at: string;
+  updated_at: string;
+  tipo_infraccion_display?: string;
+}
+
+// Formularios para infracciones
+export interface InfraccionFormData {
+  propietario: number;
+  unidad: number;
+  tipo_infraccion: TipoInfraccion;
+  descripcion: string;
+  fecha_infraccion: string;
+  evidencia_url?: string;
+  reportado_por?: number;
+  observaciones_admin?: string;
+}
+
+// Formularios para cargos
+export interface CargoFormData {
+  propietario: number;
+  unidad: number;
+  concepto: string;
+  tipo_cargo: TipoCargo;
+  monto: number;
+  moneda?: string;
+  fecha_vencimiento: string;
+  es_recurrente?: boolean;
+  periodo?: string;
+  tasa_interes_mora?: number;
+  observaciones?: string;
+}
+
+// Formularios para configuración de multas
+export interface ConfiguracionMultasFormData {
+  tipo_infraccion: TipoInfraccion;
+  monto_base: number;
+  monto_reincidencia: number;
+  dias_para_pago: number;
+  es_activa?: boolean;
+  descripcion?: string;
+}
+
+// Tipos para operaciones específicas
+export interface AplicarMultaData {
+  infraccion_id: number;
+  monto_personalizado?: number;
+  observaciones_admin?: string;
+}
+
+export interface ProcesarPagoData {
+  cargo_id: number;
+  monto_pago: number;
+  metodo_pago?: string;
+  observaciones?: string;
+}
+
+export interface ResultadoPago {
+  cargo: Cargo;
+  cargo_interes?: Cargo;
+  saldo_restante: number;
+  pago_completo: boolean;
+  mensaje: string;
+}
+
+// Estadísticas de infracciones
+export interface EstadisticasInfracciones {
+  total_infracciones: number;
+  registradas: number;
+  confirmadas: number;
+  rechazadas: number;
+  multas_aplicadas: number;
+  multas_pagadas: number;
+  por_tipo: { [key: string]: number };
+}
+
+// Resumen por propietario
+export interface ResumenPropietario {
+  propietario_id: number;
+  propietario__user__first_name: string;
+  propietario__user__last_name: string;
+  propietario__unidad__numero: string;
+  propietario__unidad__bloque__nombre: string;
+  total_cargos: number;
+  monto_total: number;
+  monto_pagado_total: number;
+  cargos_pendientes: number;
+  cargos_vencidos: number;
+}
+
+// Filtros para búsquedas
+export interface FiltrosInfracciones {
+  estado?: EstadoInfraccion[];
+  tipo_infraccion?: TipoInfraccion[];
+  propietario?: number;
+  unidad?: number;
+  es_reincidente?: boolean;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  search?: string;
+}
+
+export interface FiltrosCargos {
+  estado?: EstadoCargo[];
+  tipo_cargo?: TipoCargo[];
+  propietario?: number;
+  unidad?: number;
+  es_recurrente?: boolean;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  esta_vencido?: boolean;
+  search?: string;
+}

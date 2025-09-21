@@ -14,6 +14,9 @@ import UnitsManagement from './pages/UnitsManagement';
 import RolesPermissions from './pages/RolesPermissions';
 import SystemConfig from './pages/SystemConfig';
 import UserProfile from './pages/UserProfile';
+import Finances from './pages/Finances';
+import Infracciones from './pages/Infracciones';
+import Cargos from './pages/Cargos';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -126,6 +129,36 @@ function App() {
               <Route
                 path="communications"
                 element={<Communications />}
+              />
+
+              {/* Gestión financiera - Multas y penalizaciones */}
+              <Route
+                path="finances"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <Finances />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Gestión de infracciones */}
+              <Route
+                path="infracciones"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <Infracciones />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Gestión de cargos */}
+              <Route
+                path="cargos"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <Cargos />
+                  </ProtectedRoute>
+                }
               />
 
               {/* Gestionar configuración del sistema - Solo para administradores */}
