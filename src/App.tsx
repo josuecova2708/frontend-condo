@@ -17,6 +17,7 @@ import UserProfile from './pages/UserProfile';
 import Finances from './pages/Finances';
 import Infracciones from './pages/Infracciones';
 import Cargos from './pages/Cargos';
+import AreasComunes from './components/areas-comunes/AreasComunes';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -157,6 +158,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <Cargos />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* CU13 - Gestión de áreas comunes */}
+              <Route
+                path="areas-comunes"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <AreasComunes />
                   </ProtectedRoute>
                 }
               />

@@ -39,6 +39,11 @@ import {
   Warning as WarningIcon,
   Receipt as ReceiptIcon,
   Settings as SettingsIcon,
+  Pool as PoolIcon,
+  EventAvailable as EventIcon,
+  Build as MaintenanceIcon,
+  QrCode as QrCodeIcon,
+  Assessment as ReportIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -122,6 +127,38 @@ const menuItems: MenuItemType[] = [
         text: 'Configuración',
         icon: <SettingsIcon />,
         path: '/dashboard/finances',
+      },
+    ],
+  },
+  {
+    text: 'Gestión Áreas Comunes y Mantenimiento',
+    icon: <PoolIcon />,
+    roles: ['Administrador'],
+    children: [
+      {
+        text: 'Configurar Disponibilidad de Instalaciones',
+        icon: <EventIcon />,
+        path: '/dashboard/areas-comunes',
+      },
+      {
+        text: 'Gestionar Reservas',
+        icon: <EventIcon />,
+        path: '/dashboard/areas-comunes?tab=reservas',
+      },
+      {
+        text: 'Generar Reportes Financieros',
+        icon: <ReportIcon />,
+        path: '/dashboard/reportes-financieros',
+      },
+      {
+        text: 'Control de Acceso con QR',
+        icon: <QrCodeIcon />,
+        path: '/dashboard/control-acceso-qr',
+      },
+      {
+        text: 'Solicitudes de Mantenimiento',
+        icon: <MaintenanceIcon />,
+        path: '/dashboard/mantenimiento',
       },
     ],
   },
@@ -258,6 +295,12 @@ const Dashboard: React.FC = () => {
                       backgroundColor: 'primary.light',
                     },
                   },
+                  '&:focus': {
+                    backgroundColor: 'transparent',
+                  },
+                  '&:focus-visible': {
+                    backgroundColor: 'transparent',
+                  },
                 }}
               >
                 <ListItemIcon sx={{ color: item.path && location.pathname === item.path ? 'primary.main' : 'inherit' }}>
@@ -294,6 +337,12 @@ const Dashboard: React.FC = () => {
                             '&:hover': {
                               backgroundColor: 'primary.light',
                             },
+                          },
+                          '&:focus': {
+                            backgroundColor: 'transparent',
+                          },
+                          '&:focus-visible': {
+                            backgroundColor: 'transparent',
                           },
                         }}
                       >
@@ -348,6 +397,10 @@ const Dashboard: React.FC = () => {
             {location.pathname === '/dashboard/finances' && 'Configuración Financiera'}
             {location.pathname === '/dashboard/infracciones' && 'Gestión de Infracciones'}
             {location.pathname === '/dashboard/cargos' && 'Gestión de Cargos'}
+            {location.pathname === '/dashboard/areas-comunes' && 'Gestión de Áreas Comunes y Reservas'}
+            {location.pathname === '/dashboard/reportes-financieros' && 'Generar Reportes Financieros'}
+            {location.pathname === '/dashboard/control-acceso-qr' && 'Control de Acceso con QR'}
+            {location.pathname === '/dashboard/mantenimiento' && 'Solicitudes de Mantenimiento'}
           </Typography>
 
           {/* Información del usuario */}
