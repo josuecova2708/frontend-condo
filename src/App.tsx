@@ -19,6 +19,7 @@ import Infracciones from './pages/Infracciones';
 import Cargos from './pages/Cargos';
 import AreasComunes from './components/areas-comunes/AreasComunes';
 import Mantenimiento from './components/mantenimiento/Mantenimiento';
+import ReportesInstalaciones from './components/reportes/ReportesInstalaciones';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -179,6 +180,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <Mantenimiento />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Reportes de uso de instalaciones - Solo para administradores */}
+              <Route
+                path="reportes-instalaciones"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <ReportesInstalaciones />
                   </ProtectedRoute>
                 }
               />

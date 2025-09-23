@@ -146,14 +146,9 @@ const menuItems: MenuItemType[] = [
         path: '/dashboard/areas-comunes?tab=reservas',
       },
       {
-        text: 'Generar Reportes Financieros',
+        text: 'Generar Reportes de uso de Instalaciones',
         icon: <ReportIcon />,
-        path: '/dashboard/reportes-financieros',
-      },
-      {
-        text: 'Control de Acceso con QR',
-        icon: <QrCodeIcon />,
-        path: '/dashboard/control-acceso-qr',
+        path: '/dashboard/reportes-instalaciones',
       },
       {
         text: 'Solicitudes de Mantenimiento',
