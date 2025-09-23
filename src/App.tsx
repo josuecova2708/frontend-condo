@@ -18,6 +18,7 @@ import Finances from './pages/Finances';
 import Infracciones from './pages/Infracciones';
 import Cargos from './pages/Cargos';
 import AreasComunes from './components/areas-comunes/AreasComunes';
+import Mantenimiento from './components/mantenimiento/Mantenimiento';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -168,6 +169,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <AreasComunes />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Gestión de mantenimiento */}
+              <Route
+                path="mantenimiento"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <Mantenimiento />
                   </ProtectedRoute>
                 }
               />
