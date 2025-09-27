@@ -20,6 +20,7 @@ import Cargos from './pages/Cargos';
 import AreasComunes from './components/areas-comunes/AreasComunes';
 import Mantenimiento from './components/mantenimiento/Mantenimiento';
 import ReportesInstalaciones from './components/reportes/ReportesInstalaciones';
+import VehiclePage from './pages/VehiclePage';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -209,6 +210,17 @@ function App() {
                 path="user-profile"
                 element={<UserProfile />}
               />
+
+              {/* OCR de Placas Vehiculares - Solo para administradores */}
+              <Route
+                path="vehicle-ocr"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <VehiclePage />
+                  </ProtectedRoute>
+                }
+              />
+
             </Route>
             
             {/* Ruta 404 */}

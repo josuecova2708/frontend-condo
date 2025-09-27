@@ -44,6 +44,8 @@ import {
   Build as MaintenanceIcon,
   QrCode as QrCodeIcon,
   Assessment as ReportIcon,
+  SmartToy as AIIcon,
+  DirectionsCar as CarIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -154,6 +156,18 @@ const menuItems: MenuItemType[] = [
         text: 'Solicitudes de Mantenimiento',
         icon: <MaintenanceIcon />,
         path: '/dashboard/mantenimiento',
+      },
+    ],
+  },
+  {
+    text: 'Gestión de Seguridad con IA',
+    icon: <AIIcon />,
+    roles: ['Administrador'],
+    children: [
+      {
+        text: 'OCR de Placas Vehiculares',
+        icon: <CarIcon />,
+        path: '/dashboard/vehicle-ocr',
       },
     ],
   },
@@ -396,6 +410,7 @@ const Dashboard: React.FC = () => {
             {location.pathname === '/dashboard/reportes-financieros' && 'Generar Reportes Financieros'}
             {location.pathname === '/dashboard/control-acceso-qr' && 'Control de Acceso con QR'}
             {location.pathname === '/dashboard/mantenimiento' && 'Solicitudes de Mantenimiento'}
+            {location.pathname === '/dashboard/vehicle-ocr' && 'OCR de Placas Vehiculares'}
           </Typography>
 
           {/* Información del usuario */}
