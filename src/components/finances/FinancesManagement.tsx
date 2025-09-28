@@ -18,7 +18,6 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
-  Grid,
   Tab,
   Tabs,
   Dialog,
@@ -31,6 +30,7 @@ import {
   MenuItem,
   Pagination,
   Stack,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -62,6 +62,7 @@ import { financeService, handleApiError } from '../../services/api';
 import InfraccionForm from './InfraccionForm';
 import CargoForm from './CargoForm';
 import MultaConfigForm from './MultaConfigForm';
+import TipoInfraccionForm from './TipoInfraccionForm';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -103,32 +104,71 @@ const FinancesManagement: React.FC = () => {
   const [cargosPage, setCargosPage] = useState(1);
   const [filtrosCargos, setFiltrosCargos] = useState<FiltrosCargos>({});
 
-  // Estado para configuración de multas
+  // Estado para configuración de multas (legacy)
   const [configuracionMultas, setConfiguracionMultas] = useState<ConfiguracionMultas[]>([]);
+
+  // Estado para tipos de infracciones dinámicos
+  const [tiposInfraccion, setTiposInfraccion] = useState<TipoInfraccion[]>([]);
   const [configLoading, setConfigLoading] = useState(false);
+  const [tiposLoading, setTiposLoading] = useState(false);
 
   // Estado para modales
   const [openInfraccionDialog, setOpenInfraccionDialog] = useState(false);
   const [openCargoDialog, setOpenCargoDialog] = useState(false);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
+  const [openTipoInfraccionDialog, setOpenTipoInfraccionDialog] = useState(false);
   const [selectedInfraccion, setSelectedInfraccion] = useState<Infraccion | null>(null);
   const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<ConfiguracionMultas | null>(null);
+  const [selectedTipoInfraccion, setSelectedTipoInfraccion] = useState<TipoInfraccion | null>(null);
+  const [preselectedTipo, setPreselectedTipo] = useState<string | null>(null);
 
   // Estado general
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Estado para confirmación de eliminación
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; type: 'infraccion' | 'cargo' | 'config' | 'tipo_infraccion' } | null>(null);
+
+  // Estado para reportes y estadísticas
+  const [estadisticas, setEstadisticas] = useState<{
+    infracciones_por_tipo: { [key: string]: number };
+    infracciones_por_estado: { [key: string]: number };
+    montos_por_tipo: { [key: string]: number };
+    totales: {
+      total_infracciones: number;
+      total_multas_aplicadas: number;
+      monto_total_multas: number;
+      tasa_confirmacion: number;
+    };
+    tendencias_mensuales: Array<{
+      mes: string;
+      infracciones: number;
+      multas: number;
+      monto: number;
+    }>;
+  } | null>(null);
+  const [estadisticasLoading, setEstadisticasLoading] = useState(false);
+
   useEffect(() => {
     loadInfracciones();
     loadCargos();
     loadConfiguracionMultas();
+    loadTiposInfraccion();
+    loadEstadisticas();
   }, []);
 
   const loadInfracciones = async (page: number = 1, filtros?: FiltrosInfracciones) => {
     setInfraccionesLoading(true);
     try {
       const data = await financeService.getInfracciones(page, filtros);
+      // Debug: Log para verificar datos
+      if (data?.results?.length > 0) {
+        console.log('📊 Infracciones cargadas:', data.results.length);
+        const sample = data.results[0];
+        console.log(`💰 Ejemplo - ID:${sample.id}, Tipo:${sample.tipo_infraccion_nombre}, Monto Calculado:${sample.monto_calculado}`);
+      }
       setInfracciones(data || { count: 0, next: null, previous: null, results: [] });
       setInfraccionesPage(page);
     } catch (error) {
@@ -156,9 +196,22 @@ const FinancesManagement: React.FC = () => {
   const loadConfiguracionMultas = async () => {
     setConfigLoading(true);
     try {
-      const data = await financeService.getConfiguracionMultas();
-      // Asegurar que data sea un array
-      setConfiguracionMultas(Array.isArray(data) ? data : []);
+      // Updated to use new TipoInfraccion API instead of old configuracion-multas
+      const data = await financeService.getTiposInfraccion();
+      // Convert TipoInfraccion to ConfiguracionMultas format for compatibility
+      const configuraciones = data.map(tipo => ({
+        id: tipo.id,
+        tipo_infraccion: tipo.codigo as any, // Legacy type compatibility
+        monto_base: tipo.monto_base,
+        monto_reincidencia: tipo.monto_reincidencia,
+        dias_para_pago: tipo.dias_para_pago,
+        es_activa: tipo.es_activo,
+        descripcion: tipo.descripcion || '',
+        created_at: tipo.created_at,
+        updated_at: tipo.updated_at,
+        tipo_infraccion_display: tipo.nombre,
+      }));
+      setConfiguracionMultas(configuraciones);
     } catch (error) {
       setError(handleApiError(error));
       setConfiguracionMultas([]);
@@ -167,11 +220,104 @@ const FinancesManagement: React.FC = () => {
     }
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  const loadTiposInfraccion = async () => {
+    console.log('🔄 Loading tipos de infraccion...');
+    setTiposLoading(true);
+    try {
+      const tipos = await financeService.getTiposInfraccion();
+      console.log('✅ Tipos de infraccion loaded:', tipos);
+      setTiposInfraccion(tipos);
+    } catch (error) {
+      console.error('❌ Error loading tipos de infraccion:', error);
+      setError(handleApiError(error));
+      setTiposInfraccion([]);
+    } finally {
+      setTiposLoading(false);
+    }
   };
 
-  const getEstadoChip = (estado: string, tipo: 'infraccion' | 'cargo') => {
+  const loadEstadisticas = async () => {
+    console.log('🔄 Loading estadísticas...');
+    setEstadisticasLoading(true);
+    try {
+      // Calcular estadísticas desde los datos cargados
+      const todasInfracciones = infracciones.results || [];
+      const todosCargos = cargos.results || [];
+
+      console.log('📊 Datos para estadísticas:', {
+        infracciones: todasInfracciones.length,
+        cargos: todosCargos.length,
+        tiposInfraccion: tiposInfraccion.length
+      });
+
+      // Infracciones por tipo
+      const infracciones_por_tipo: { [key: string]: number } = {};
+      const montos_por_tipo: { [key: string]: number } = {};
+
+      tiposInfraccion.forEach(tipo => {
+        const count = todasInfracciones.filter(inf => inf.tipo_infraccion === tipo.id).length;
+        infracciones_por_tipo[tipo.nombre] = count;
+
+        // Calcular monto total usando el monto base del tipo de infracción
+        // Multiplicar cantidad por monto base (asumiendo primera infracción para simplificar)
+        const montoTotal = count * Number(tipo.monto_base);
+        montos_por_tipo[tipo.nombre] = montoTotal;
+
+        console.log(`📈 ${tipo.nombre}: ${count} infracciones, $${montoTotal} en multas (${formatCurrency(Number(tipo.monto_base))} x ${count})`);
+      });
+
+      // Infracciones por estado
+      const infracciones_por_estado: { [key: string]: number } = {};
+      todasInfracciones.forEach(inf => {
+        if (inf.estado && typeof inf.estado === 'string') {
+          infracciones_por_estado[inf.estado] = (infracciones_por_estado[inf.estado] || 0) + 1;
+        }
+      });
+
+      // Totales
+      const total_infracciones = todasInfracciones.length;
+      const infracciones_confirmadas = todasInfracciones.filter(inf => inf.estado === 'confirmada').length;
+      const multas_aplicadas = todasInfracciones.filter(inf => inf.estado === 'multa_aplicada' || inf.estado === 'pagada').length;
+
+      // Calcular monto total de multas usando los montos base de tipos de infracción
+      const monto_total_multas = Object.values(montos_por_tipo).reduce((sum, monto) => sum + monto, 0);
+
+      const tasa_confirmacion = total_infracciones > 0 ?
+        ((infracciones_confirmadas + multas_aplicadas) / total_infracciones * 100) : 0;
+
+      const estadisticasCalculadas = {
+        infracciones_por_tipo,
+        infracciones_por_estado,
+        montos_por_tipo,
+        totales: {
+          total_infracciones,
+          total_multas_aplicadas: multas_aplicadas,
+          monto_total_multas,
+          tasa_confirmacion: Math.round(tasa_confirmacion * 100) / 100
+        },
+        tendencias_mensuales: [] // Por ahora vacío, se puede implementar más adelante
+      };
+
+      console.log('✅ Estadísticas calculadas:', estadisticasCalculadas);
+      setEstadisticas(estadisticasCalculadas);
+
+    } catch (error) {
+      console.error('Error calculando estadísticas:', error);
+      setError('Error al calcular estadísticas');
+    } finally {
+      setEstadisticasLoading(false);
+    }
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    // Recargar estadísticas cuando se abra el tab de reportes
+    if (newValue === 3) {
+      loadEstadisticas();
+    }
+  };
+
+  const getEstadoColor = (estado: string): 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' => {
     const colors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' } = {
       // Estados de infracciones
       registrada: 'info',
@@ -188,10 +334,14 @@ const FinancesManagement: React.FC = () => {
       cancelado: 'default',
     };
 
+    return colors[estado] || 'default';
+  };
+
+  const getEstadoChip = (estado: string, tipo: 'infraccion' | 'cargo') => {
     return (
       <Chip
         label={estado}
-        color={colors[estado] || 'default'}
+        color={getEstadoColor(estado)}
         size="small"
       />
     );
@@ -224,6 +374,66 @@ const FinancesManagement: React.FC = () => {
       setError(handleApiError(error));
     }
   };
+
+  const handleDeleteInfraccion = (id: number) => {
+    setDeleteTarget({ id, type: 'infraccion' });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteCargo = (id: number) => {
+    setDeleteTarget({ id, type: 'cargo' });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfig = (id: number) => {
+    setDeleteTarget({ id, type: 'config' });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteTipoInfraccion = (id: number) => {
+    setDeleteTarget({ id, type: 'tipo_infraccion' });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      switch (deleteTarget.type) {
+        case 'infraccion':
+          await financeService.deleteInfraccion(deleteTarget.id);
+          setSuccess('Infracción eliminada exitosamente');
+          loadInfracciones(infraccionesPage, filtrosInfracciones);
+          break;
+        case 'cargo':
+          await financeService.deleteCargo(deleteTarget.id);
+          setSuccess('Cargo eliminado exitosamente');
+          loadCargos(cargosPage, filtrosCargos);
+          break;
+        case 'config':
+          await financeService.deleteConfiguracionMulta(deleteTarget.id);
+          setSuccess('Configuración eliminada exitosamente');
+          loadConfiguracionMultas();
+          break;
+        case 'tipo_infraccion':
+          await financeService.deleteTipoInfraccion(deleteTarget.id);
+          setSuccess('Tipo de infracción eliminado exitosamente');
+          loadTiposInfraccion();
+          break;
+      }
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
+  };
+
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -300,7 +510,7 @@ const FinancesManagement: React.FC = () => {
                         <TableRow key={infraccion.id}>
                           <TableCell>{infraccion.propietario_nombre || '-'}</TableCell>
                           <TableCell>{infraccion.unidad_numero || '-'}</TableCell>
-                          <TableCell>{infraccion.tipo_infraccion_display || '-'}</TableCell>
+                          <TableCell>{infraccion.tipo_infraccion_nombre || '-'}</TableCell>
                           <TableCell>
                             <Tooltip title={infraccion.descripcion || ''}>
                               <span>
@@ -317,7 +527,11 @@ const FinancesManagement: React.FC = () => {
                             {getEstadoChip(infraccion.estado || 'registrada', 'infraccion')}
                           </TableCell>
                           <TableCell>
-                            {infraccion.monto_multa ? formatCurrency(infraccion.monto_multa) : '-'}
+                            {infraccion.monto_calculado
+                              ? formatCurrency(Number(infraccion.monto_calculado))
+                              : (infraccion.monto_multa
+                                  ? formatCurrency(Number(infraccion.monto_multa))
+                                  : '-')}
                           </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={1}>
@@ -354,6 +568,15 @@ const FinancesManagement: React.FC = () => {
                                   </IconButton>
                                 </Tooltip>
                               )}
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteInfraccion(infraccion.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
                             </Stack>
                           </TableCell>
                         </TableRow>
@@ -447,6 +670,15 @@ const FinancesManagement: React.FC = () => {
                                   <EditIcon />
                                 </IconButton>
                               </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteCargo(cargo.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
                             </Stack>
                           </TableCell>
                         </TableRow>
@@ -477,23 +709,25 @@ const FinancesManagement: React.FC = () => {
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => {
-                    setSelectedConfig(null);
-                    setOpenConfigDialog(true);
+                    setSelectedTipoInfraccion(null);
+                    setOpenTipoInfraccionDialog(true);
                   }}
                 >
-                  Nueva Configuración
+                  Nuevo Tipo de Infracción
                 </Button>
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
-                  onClick={loadConfiguracionMultas}
+                  onClick={() => {
+                    loadTiposInfraccion();
+                  }}
                 >
                   Actualizar
                 </Button>
               </Stack>
             </Box>
 
-            {configLoading ? (
+            {tiposLoading ? (
               <Box display="flex" justifyContent="center" p={3}>
                 <CircularProgress />
               </Box>
@@ -502,43 +736,68 @@ const FinancesManagement: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Tipo de Infracción</TableCell>
+                      <TableCell>Código</TableCell>
+                      <TableCell>Nombre</TableCell>
                       <TableCell>Monto Base</TableCell>
                       <TableCell>Monto Reincidencia</TableCell>
                       <TableCell>Días para Pago</TableCell>
                       <TableCell>Estado</TableCell>
+                      <TableCell>Orden</TableCell>
                       <TableCell>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {configuracionMultas?.map((config) => (
-                      <TableRow key={config.id}>
-                        <TableCell>{config.tipo_infraccion_display || '-'}</TableCell>
-                        <TableCell>{config.monto_base ? formatCurrency(config.monto_base) : '-'}</TableCell>
-                        <TableCell>{config.monto_reincidencia ? formatCurrency(config.monto_reincidencia) : '-'}</TableCell>
-                        <TableCell>{config.dias_para_pago ? `${config.dias_para_pago} días` : '-'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={config.es_activa ? 'Activa' : 'Inactiva'}
-                            color={config.es_activa ? 'success' : 'default'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip title="Editar">
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setSelectedConfig(config);
-                                setOpenConfigDialog(true);
-                              }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
+                    {tiposInfraccion.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center">
+                          <Typography color="text.secondary" sx={{ py: 3 }}>
+                            No hay tipos de infracciones configurados
+                          </Typography>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      tiposInfraccion.map((tipo) => (
+                        <TableRow key={tipo.id}>
+                          <TableCell>{tipo.codigo}</TableCell>
+                          <TableCell>{tipo.nombre}</TableCell>
+                          <TableCell>{formatCurrency(Number(tipo.monto_base))}</TableCell>
+                          <TableCell>{formatCurrency(Number(tipo.monto_reincidencia))}</TableCell>
+                          <TableCell>{tipo.dias_para_pago} días</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={tipo.es_activo ? 'Activo' : 'Inactivo'}
+                              color={tipo.es_activo ? 'success' : 'default'}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>{tipo.orden}</TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1}>
+                              <Tooltip title="Editar">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setSelectedTipoInfraccion(tipo);
+                                    setOpenTipoInfraccionDialog(true);
+                                  }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteTipoInfraccion(tipo.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -547,12 +806,151 @@ const FinancesManagement: React.FC = () => {
 
           {/* Panel de Reportes */}
           <TabPanel value={tabValue} index={3}>
-            <Typography variant="h6" gutterBottom>
-              Reportes y Estadísticas
-            </Typography>
-            <Typography color="text.secondary">
-              Esta sección estará disponible próximamente...
-            </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
+                  Reportes y Estadísticas
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={loadEstadisticas}
+                  disabled={estadisticasLoading}
+                >
+                  Actualizar
+                </Button>
+              </Stack>
+            </Box>
+
+            {estadisticasLoading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : estadisticas && Object.keys(estadisticas.infracciones_por_estado).length > 0 ? (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3 }}>
+                {/* Tarjetas de resumen */}
+                <Card sx={{ textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                  <CardContent>
+                    <Typography variant="h4">{estadisticas.totales.total_infracciones}</Typography>
+                    <Typography variant="body2">Total Infracciones</Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
+                  <CardContent>
+                    <Typography variant="h4">{estadisticas.totales.total_multas_aplicadas}</Typography>
+                    <Typography variant="body2">Multas Aplicadas</Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ textAlign: 'center', bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                  <CardContent>
+                    <Typography variant="h4">{formatCurrency(estadisticas.totales.monto_total_multas)}</Typography>
+                    <Typography variant="body2">Total en Multas</Typography>
+                  </CardContent>
+                </Card>
+                <Card sx={{ textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
+                  <CardContent>
+                    <Typography variant="h4">{estadisticas.totales.tasa_confirmacion}%</Typography>
+                    <Typography variant="body2">Tasa Confirmación</Typography>
+                  </CardContent>
+                </Card>
+
+                {/* Infracciones por tipo - Top 5 */}
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Infracciones Más Cometidas
+                      </Typography>
+                      {Object.entries(estadisticas.infracciones_por_tipo)
+                        .filter(([tipo, cantidad]) => tipo && typeof tipo === 'string' && cantidad > 0)
+                        .sort(([,a], [,b]) => b - a)
+                        .slice(0, 5)
+                        .map(([tipo, cantidad]) => (
+                          <Box key={tipo} sx={{ mb: 2 }}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center">
+                              <Typography variant="body2">{tipo}</Typography>
+                              <Typography variant="body2" fontWeight="bold">{cantidad}</Typography>
+                            </Box>
+                            <LinearProgress
+                              variant="determinate"
+                              value={estadisticas.totales.total_infracciones > 0 ?
+                                (cantidad / estadisticas.totales.total_infracciones) * 100 : 0}
+                              sx={{ mt: 0.5 }}
+                            />
+                          </Box>
+                        ))}
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                {/* Infracciones por estado */}
+                <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Estado de Infracciones
+                      </Typography>
+                      {Object.entries(estadisticas.infracciones_por_estado)
+                        .filter(([estado, cantidad]) => estado && typeof estado === 'string' && cantidad > 0)
+                        .map(([estado, cantidad]) => (
+                          <Box key={estado} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Chip
+                              label={estado.replace(/_/g, ' ').toUpperCase()}
+                              color={getEstadoColor(estado)}
+                              size="small"
+                            />
+                            <Typography variant="body2" fontWeight="bold">{cantidad}</Typography>
+                          </Box>
+                        ))}
+                    </CardContent>
+                  </Card>
+                </Box>
+
+                {/* Montos recaudados por tipo */}
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Montos Recaudados por Tipo de Infracción
+                      </Typography>
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Tipo de Infracción</TableCell>
+                              <TableCell align="right">Cantidad</TableCell>
+                              <TableCell align="right">Monto Total</TableCell>
+                              <TableCell align="right">Promedio</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {Object.entries(estadisticas.infracciones_por_tipo)
+                              .filter(([tipo, cantidad]) => tipo && typeof tipo === 'string' && cantidad > 0)
+                              .sort(([,a], [,b]) => b - a)
+                              .map(([tipo, cantidad]) => {
+                                const monto = estadisticas.montos_por_tipo[tipo] || 0;
+                                const promedio = cantidad > 0 ? monto / cantidad : 0;
+                                return (
+                                  <TableRow key={tipo}>
+                                    <TableCell>{tipo}</TableCell>
+                                    <TableCell align="right">{cantidad}</TableCell>
+                                    <TableCell align="right">{formatCurrency(monto)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(promedio)}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            ) : (
+              <Alert severity="info">
+                No hay datos suficientes para generar estadísticas
+              </Alert>
+            )}
           </TabPanel>
         </CardContent>
       </Card>
@@ -587,15 +985,73 @@ const FinancesManagement: React.FC = () => {
       {openConfigDialog && (
         <MultaConfigForm
           open={openConfigDialog}
-          onClose={() => setOpenConfigDialog(false)}
+          onClose={() => {
+            setOpenConfigDialog(false);
+            setPreselectedTipo(null);
+          }}
           configuracion={selectedConfig}
+          preselectedTipo={preselectedTipo}
           onSuccess={() => {
             loadConfiguracionMultas();
             setOpenConfigDialog(false);
+            setPreselectedTipo(null);
             setSuccess(selectedConfig ? 'Configuración actualizada' : 'Configuración creada');
           }}
         />
       )}
+
+      {openTipoInfraccionDialog && (
+        <TipoInfraccionForm
+          open={openTipoInfraccionDialog}
+          onClose={() => {
+            setOpenTipoInfraccionDialog(false);
+            setSelectedTipoInfraccion(null);
+          }}
+          tipoInfraccion={selectedTipoInfraccion}
+          onSuccess={() => {
+            loadTiposInfraccion();
+            setOpenTipoInfraccionDialog(false);
+            setSelectedTipoInfraccion(null);
+            setSuccess(selectedTipoInfraccion ? 'Tipo de infracción actualizado' : 'Tipo de infracción creado');
+          }}
+        />
+      )}
+
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Confirmar Eliminación
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Está seguro que desea eliminar este{' '}
+            {deleteTarget?.type === 'infraccion' ? 'infracción' :
+             deleteTarget?.type === 'cargo' ? 'cargo' :
+             deleteTarget?.type === 'tipo_infraccion' ? 'tipo de infracción' : 'configuración'}?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            startIcon={<DeleteIcon />}
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

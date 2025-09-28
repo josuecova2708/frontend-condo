@@ -27,6 +27,7 @@ import {
   CargoFormData,
   ConfiguracionMultas,
   ConfiguracionMultasFormData,
+  TipoInfraccionFormData,
   AplicarMultaData,
   ProcesarPagoData,
   ResultadoPago,
@@ -693,11 +694,24 @@ export const financeService = {
     return response.data;
   },
 
-  // ========== CONFIGURACIÓN MULTAS ==========
+  // ========== CONFIGURACIÓN MULTAS (DEPRECATED - Use TipoInfraccion instead) ==========
   async getConfiguracionMultas(): Promise<ConfiguracionMultas[]> {
-    const response: AxiosResponse<ConfiguracionMultas[]> = await api.get('/finances/api/configuracion-multas/');
-    // Asegurar que siempre devolvemos un array
-    return Array.isArray(response.data) ? response.data : [];
+    console.warn('getConfiguracionMultas is deprecated. Use getTiposInfraccion instead.');
+    // Redirect to new endpoint
+    const tipos = await this.getTiposInfraccion();
+    // Convert to legacy format for compatibility
+    return tipos.map(tipo => ({
+      id: tipo.id,
+      tipo_infraccion: tipo.codigo as any,
+      monto_base: tipo.monto_base,
+      monto_reincidencia: tipo.monto_reincidencia,
+      dias_para_pago: tipo.dias_para_pago,
+      es_activa: tipo.es_activo,
+      descripcion: tipo.descripcion || '',
+      created_at: tipo.created_at,
+      updated_at: tipo.updated_at,
+      tipo_infraccion_display: tipo.nombre,
+    }));
   },
 
   async getConfiguracionMulta(id: number): Promise<ConfiguracionMultas> {
@@ -717,6 +731,46 @@ export const financeService = {
 
   async deleteConfiguracionMulta(id: number): Promise<void> {
     await api.delete(`/finances/api/configuracion-multas/${id}/`);
+  },
+
+  // ========== TIPOS DE INFRACCIONES ==========
+  async getTiposInfraccion(): Promise<TipoInfraccion[]> {
+    const response: AxiosResponse<PaginatedResponse<TipoInfraccion>> = await api.get('/finances/api/tipos-infraccion/');
+    return Array.isArray(response.data.results) ? response.data.results : [];
+  },
+
+  async getTiposInfraccionActivos(): Promise<TipoInfraccion[]> {
+    const response: AxiosResponse<TipoInfraccion[]> = await api.get('/finances/api/tipos-infraccion/activos/');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  async getTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.get(`/finances/api/tipos-infraccion/${id}/`);
+    return response.data;
+  },
+
+  async createTipoInfraccion(data: TipoInfraccionFormData): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post('/finances/api/tipos-infraccion/', data);
+    return response.data;
+  },
+
+  async updateTipoInfraccion(id: number, data: Partial<TipoInfraccionFormData>): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.patch(`/finances/api/tipos-infraccion/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteTipoInfraccion(id: number): Promise<void> {
+    await api.delete(`/finances/api/tipos-infraccion/${id}/`);
+  },
+
+  async activarTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post(`/finances/api/tipos-infraccion/${id}/activar/`);
+    return response.data;
+  },
+
+  async desactivarTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post(`/finances/api/tipos-infraccion/${id}/desactivar/`);
+    return response.data;
   },
 
   // ========== ESTADÍSTICAS Y REPORTES ==========

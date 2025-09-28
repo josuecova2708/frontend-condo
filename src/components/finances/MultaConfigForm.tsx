@@ -22,6 +22,7 @@ import {
   ConfiguracionMultas,
   ConfiguracionMultasFormData,
   TipoInfraccion,
+  TipoInfraccionLegacy,
 } from '../../types';
 import { financeService, handleApiError } from '../../services/api';
 
@@ -29,27 +30,20 @@ interface MultaConfigFormProps {
   open: boolean;
   onClose: () => void;
   configuracion?: ConfiguracionMultas | null;
+  preselectedTipo?: string | null;
   onSuccess: () => void;
 }
 
-const tiposInfraccion = [
-  { value: 'ruido_excesivo', label: 'Ruido Excesivo' },
-  { value: 'uso_inadecuado_areas', label: 'Uso Inadecuado de Áreas' },
-  { value: 'mascota_sin_correa', label: 'Mascota sin Correa' },
-  { value: 'basura_horario', label: 'Basura fuera de Horario' },
-  { value: 'parqueadero_incorrecto', label: 'Parqueadero Incorrecto' },
-  { value: 'modificacion_sin_permiso', label: 'Modificación sin Permiso' },
-  { value: 'otros', label: 'Otros' },
-];
 
 const MultaConfigForm: React.FC<MultaConfigFormProps> = ({
   open,
   onClose,
   configuracion,
+  preselectedTipo,
   onSuccess,
 }) => {
   const [formData, setFormData] = useState<ConfiguracionMultasFormData>({
-    tipo_infraccion: 'ruido_excesivo' as TipoInfraccion,
+    tipo_infraccion: 'ruido_excesivo',
     monto_base: 0,
     monto_reincidencia: 0,
     dias_para_pago: 15,
@@ -57,21 +51,43 @@ const MultaConfigForm: React.FC<MultaConfigFormProps> = ({
     descripcion: '',
   });
 
+  const [tiposInfraccion, setTiposInfraccion] = useState<TipoInfraccion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tiposLoading, setTiposLoading] = useState(false);
 
   useEffect(() => {
-    if (open && configuracion) {
-      setFormData({
-        tipo_infraccion: configuracion.tipo_infraccion,
-        monto_base: configuracion.monto_base,
-        monto_reincidencia: configuracion.monto_reincidencia,
-        dias_para_pago: configuracion.dias_para_pago,
-        es_activa: configuracion.es_activa,
-        descripcion: configuracion.descripcion || '',
-      });
+    if (open) {
+      loadTiposInfraccion();
+      if (configuracion) {
+        setFormData({
+          tipo_infraccion: configuracion.tipo_infraccion,
+          monto_base: configuracion.monto_base,
+          monto_reincidencia: configuracion.monto_reincidencia,
+          dias_para_pago: configuracion.dias_para_pago,
+          es_activa: configuracion.es_activa,
+          descripcion: configuracion.descripcion || '',
+        });
+      } else if (preselectedTipo) {
+        setFormData(prev => ({
+          ...prev,
+          tipo_infraccion: preselectedTipo as TipoInfraccionLegacy,
+        }));
+      }
     }
-  }, [open, configuracion]);
+  }, [open, configuracion, preselectedTipo]);
+
+  const loadTiposInfraccion = async () => {
+    setTiposLoading(true);
+    try {
+      const tipos = await financeService.getTiposInfraccion();
+      setTiposInfraccion(tipos);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setTiposLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +111,7 @@ const MultaConfigForm: React.FC<MultaConfigFormProps> = ({
   const handleClose = () => {
     if (!loading) {
       setFormData({
-        tipo_infraccion: 'ruido_excesivo' as TipoInfraccion,
+        tipo_infraccion: 'ruido_excesivo',
         monto_base: 0,
         monto_reincidencia: 0,
         dias_para_pago: 15,
@@ -141,16 +157,25 @@ const MultaConfigForm: React.FC<MultaConfigFormProps> = ({
                 onChange={(e) =>
                   setFormData(prev => ({
                     ...prev,
-                    tipo_infraccion: e.target.value as TipoInfraccion,
+                    tipo_infraccion: e.target.value as TipoInfraccionLegacy,
                   }))
                 }
-                disabled={!!configuracion} // No permitir cambiar el tipo al editar
+                disabled={!!configuracion || tiposLoading} // No permitir cambiar el tipo al editar o mientras carga
               >
-                {tiposInfraccion.map((tipo) => (
-                  <MenuItem key={tipo.value} value={tipo.value}>
-                    {tipo.label}
+                {tiposLoading ? (
+                  <MenuItem disabled>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <CircularProgress size={16} />
+                      <span>Cargando tipos...</span>
+                    </Box>
                   </MenuItem>
-                ))}
+                ) : (
+                  tiposInfraccion.map((tipo) => (
+                    <MenuItem key={tipo.id} value={tipo.codigo}>
+                      {tipo.nombre}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
