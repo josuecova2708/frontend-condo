@@ -324,8 +324,27 @@ export interface Notification {
 // TIPOS PARA MÓDULO FINANCIERO (CU11)
 // ===============================
 
-// Enums para infracciones
-export type TipoInfraccion =
+// Tipos para infracciones dinámicos
+export interface TipoInfraccion {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  monto_base: number;
+  monto_reincidencia: number;
+  dias_para_pago: number;
+  es_activo: boolean;
+  orden: number;
+  created_at: string;
+  updated_at: string;
+  diferencia_reincidencia?: {
+    diferencia: number;
+    porcentaje: number;
+  };
+}
+
+// Legacy type para compatibilidad - se removerá gradualmente
+export type TipoInfraccionLegacy =
   | 'ruido_excesivo'
   | 'uso_inadecuado_areas'
   | 'mascota_sin_correa'
@@ -361,12 +380,14 @@ export interface Infraccion {
   id: number;
   propietario: number;
   unidad: number;
-  tipo_infraccion: TipoInfraccion;
+  tipo_infraccion: number; // Temporarily use ID, will have TipoInfraccion object later
+  tipo_infraccion_nombre?: string; // From serializer
   descripcion: string;
   fecha_infraccion: string;
   evidencia_url?: string;
   reportado_por?: number;
   monto_multa?: number;
+  monto_calculado?: number; // Monto calculado según tipo de infracción
   fecha_limite_pago?: string;
   estado: EstadoInfraccion;
   observaciones_admin?: string;
@@ -441,9 +462,10 @@ export interface Cargo {
 }
 
 // Tipos para configuración de multas
+// Deprecated - use TipoInfraccion directly
 export interface ConfiguracionMultas {
   id: number;
-  tipo_infraccion: TipoInfraccion;
+  tipo_infraccion: TipoInfraccionLegacy;
   monto_base: number;
   monto_reincidencia: number;
   dias_para_pago: number;
@@ -458,7 +480,7 @@ export interface ConfiguracionMultas {
 export interface InfraccionFormData {
   propietario: number;
   unidad: number;
-  tipo_infraccion: TipoInfraccion;
+  tipo_infraccion: number; // TipoInfraccion ID
   descripcion: string;
   fecha_infraccion: string;
   evidencia_url?: string;
@@ -482,13 +504,26 @@ export interface CargoFormData {
 }
 
 // Formularios para configuración de multas
+// Deprecated - use TipoInfraccionFormData
 export interface ConfiguracionMultasFormData {
-  tipo_infraccion: TipoInfraccion;
+  tipo_infraccion: TipoInfraccionLegacy;
   monto_base: number;
   monto_reincidencia: number;
   dias_para_pago: number;
   es_activa?: boolean;
   descripcion?: string;
+}
+
+// Form data for TipoInfraccion
+export interface TipoInfraccionFormData {
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  monto_base: number;
+  monto_reincidencia: number;
+  dias_para_pago: number;
+  es_activo?: boolean;
+  orden?: number;
 }
 
 // Tipos para operaciones específicas

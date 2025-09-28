@@ -26,6 +26,7 @@ import {
   TipoInfraccion,
   Propietario,
   UnidadHabitacional,
+  ConfiguracionMultas,
 } from '../../types';
 import { financeService, propertyService, handleApiError } from '../../services/api';
 
@@ -36,15 +37,6 @@ interface InfraccionFormProps {
   onSuccess: () => void;
 }
 
-const tiposInfraccion = [
-  { value: 'ruido_excesivo', label: 'Ruido Excesivo' },
-  { value: 'uso_inadecuado_areas', label: 'Uso Inadecuado de Áreas' },
-  { value: 'mascota_sin_correa', label: 'Mascota sin Correa' },
-  { value: 'basura_horario', label: 'Basura fuera de Horario' },
-  { value: 'parqueadero_incorrecto', label: 'Parqueadero Incorrecto' },
-  { value: 'modificacion_sin_permiso', label: 'Modificación sin Permiso' },
-  { value: 'otros', label: 'Otros' },
-];
 
 const InfraccionForm: React.FC<InfraccionFormProps> = ({
   open,
@@ -55,7 +47,7 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
   const [formData, setFormData] = useState<InfraccionFormData>({
     propietario: 0,
     unidad: 0,
-    tipo_infraccion: 'ruido_excesivo' as TipoInfraccion,
+    tipo_infraccion: 0,
     descripcion: '',
     fecha_infraccion: new Date().toISOString().split('T')[0],
     evidencia_url: '',
@@ -65,13 +57,19 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
   const [propietarios, setPropietarios] = useState<Propietario[]>([]);
   const [unidades, setUnidades] = useState<UnidadHabitacional[]>([]);
   const [selectedPropietario, setSelectedPropietario] = useState<Propietario | null>(null);
+  const [configuracionesMultas, setConfiguracionesMultas] = useState<ConfiguracionMultas[]>([]);
+  const [montoCalculado, setMontoCalculado] = useState<number | null>(null);
+  const [tiposInfraccion, setTiposInfraccion] = useState<TipoInfraccion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [propietariosLoading, setPropietariosLoading] = useState(false);
+  const [tiposLoading, setTiposLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       loadPropietarios();
+      loadConfiguracionesMultas();
+      loadTiposInfraccion();
       if (infraccion) {
         setFormData({
           propietario: infraccion.propietario,
@@ -85,6 +83,13 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
       }
     }
   }, [open, infraccion]);
+
+  // Calcular monto cuando cambie el tipo de infracción
+  useEffect(() => {
+    if (formData.tipo_infraccion && configuracionesMultas.length > 0) {
+      calcularMontoMulta(formData.tipo_infraccion);
+    }
+  }, [formData.tipo_infraccion, configuracionesMultas]);
 
   const loadPropietarios = async () => {
     setPropietariosLoading(true);
@@ -104,6 +109,48 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
     } finally {
       setPropietariosLoading(false);
     }
+  };
+
+  const loadConfiguracionesMultas = async () => {
+    try {
+      // Note: This function is deprecated - using TipoInfraccion instead
+      // const configuraciones = await financeService.getConfiguracionMultas();
+      // setConfiguracionesMultas(configuraciones);
+      console.warn('loadConfiguracionesMultas is deprecated, use loadTiposInfraccion instead');
+    } catch (error) {
+      console.warn('Error cargando configuraciones de multas:', error);
+      // No mostramos error al usuario, solo no tendremos cálculo automático
+    }
+  };
+
+  const loadTiposInfraccion = async () => {
+    setTiposLoading(true);
+    try {
+      const tipos = await financeService.getTiposInfraccion();
+      setTiposInfraccion(tipos);
+    } catch (error) {
+      console.warn('Error cargando tipos de infracción:', error);
+      // Fallback a lista por defecto
+      setTiposInfraccion([]);
+    } finally {
+      setTiposLoading(false);
+    }
+  };
+
+  const calcularMontoMulta = (tipoInfraccionId: number, esReincidente: boolean = false) => {
+    const tipoInfraccion = tiposInfraccion.find(tipo => tipo.id === tipoInfraccionId);
+    if (!tipoInfraccion) {
+      setMontoCalculado(null);
+      return;
+    }
+
+    // Usar directamente los datos del TipoInfraccion
+    const monto = esReincidente ?
+      Number(tipoInfraccion.monto_reincidencia) :
+      Number(tipoInfraccion.monto_base);
+
+    setMontoCalculado(monto);
+    console.log(`💰 Monto calculado para ${tipoInfraccion.nombre}: ${monto} (${esReincidente ? 'reincidente' : 'primera vez'})`);
   };
 
   const handlePropietarioChange = (propietario: Propietario | null) => {
@@ -141,7 +188,7 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
       setFormData({
         propietario: 0,
         unidad: 0,
-        tipo_infraccion: 'ruido_excesivo' as TipoInfraccion,
+        tipo_infraccion: 0,
         descripcion: '',
         fecha_infraccion: new Date().toISOString().split('T')[0],
         evidencia_url: '',
@@ -198,20 +245,46 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
               <Select
                 value={formData.tipo_infraccion}
                 label="Tipo de Infracción"
-                onChange={(e) =>
+                onChange={(e) => {
+                  const tipoId = e.target.value as number;
                   setFormData(prev => ({
                     ...prev,
-                    tipo_infraccion: e.target.value as TipoInfraccion,
-                  }))
-                }
+                    tipo_infraccion: tipoId,
+                  }));
+                  // Calcular monto automáticamente
+                  calcularMontoMulta(tipoId);
+                }}
+                disabled={tiposLoading}
               >
-                {tiposInfraccion.map((tipo) => (
-                  <MenuItem key={tipo.value} value={tipo.value}>
-                    {tipo.label}
+                {tiposLoading ? (
+                  <MenuItem disabled>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <CircularProgress size={16} />
+                      <span>Cargando tipos...</span>
+                    </Box>
                   </MenuItem>
-                ))}
+                ) : (
+                  tiposInfraccion.map((tipo) => (
+                    <MenuItem key={tipo.id} value={tipo.id}>
+                      {tipo.nombre}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
+
+            {montoCalculado !== null && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <strong>Monto de multa calculado:</strong> {new Intl.NumberFormat('es-BO', {
+                  style: 'currency',
+                  currency: 'BOB',
+                }).format(montoCalculado)}
+                <br />
+                <Typography variant="caption" color="text.secondary">
+                  Este monto se aplicará automáticamente cuando se confirme la infracción y se genere la multa.
+                </Typography>
+              </Alert>
+            )}
 
             <TextField
               label="Descripción"
@@ -255,6 +328,21 @@ const InfraccionForm: React.FC<InfraccionFormProps> = ({
               placeholder="https://ejemplo.com/imagen.jpg (opcional)"
               fullWidth
             />
+
+            {/* Mostrar monto calculado automáticamente */}
+            {montoCalculado !== null && (
+              <Box sx={{ p: 2, bgcolor: 'info.50', borderRadius: 1, border: '1px solid', borderColor: 'info.200' }}>
+                <Typography variant="subtitle2" gutterBottom color="info.main">
+                  💰 Monto de Multa Calculado
+                </Typography>
+                <Typography variant="h6" color="info.dark">
+                  Bs. {montoCalculado.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Este monto se aplicará automáticamente según la configuración del tipo de infracción.
+                </Typography>
+              </Box>
+            )}
 
             <TextField
               label="Observaciones Administrativas"

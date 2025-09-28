@@ -19,22 +19,30 @@ import {
   Tooltip,
   Pagination,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
   Refresh as RefreshIcon,
   CheckCircle as CheckIcon,
   AttachMoney as MoneyIcon,
+  SwapHoriz as SwapIcon,
 } from '@mui/icons-material';
 import {
   Infraccion,
   FiltrosInfracciones,
   PaginatedResponse,
+  EstadoInfraccion,
 } from '../../types';
 import { financeService, handleApiError } from '../../services/api';
 import InfraccionForm from './InfraccionForm';
+import EstadoInfraccionModal from './EstadoInfraccionModal';
 
 const InfraccionesManagement: React.FC = () => {
   // Estado para infracciones
@@ -50,11 +58,16 @@ const InfraccionesManagement: React.FC = () => {
 
   // Estado para modales
   const [openInfraccionDialog, setOpenInfraccionDialog] = useState(false);
+  const [openEstadoInfraccionModal, setOpenEstadoInfraccionModal] = useState(false);
   const [selectedInfraccion, setSelectedInfraccion] = useState<Infraccion | null>(null);
 
   // Estado general
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Estado para confirmación de eliminación
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     loadInfracciones();
@@ -117,6 +130,46 @@ const InfraccionesManagement: React.FC = () => {
       loadInfracciones(infraccionesPage, filtrosInfracciones);
     } catch (error) {
       setError(handleApiError(error));
+    }
+  };
+
+  const handleDeleteInfraccion = (id: number) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+
+    try {
+      await financeService.deleteInfraccion(deleteTargetId);
+      setSuccess('Infracción eliminada exitosamente');
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  const handleOpenEstadoInfraccionModal = (infraccion: Infraccion) => {
+    setSelectedInfraccion(infraccion);
+    setOpenEstadoInfraccionModal(true);
+  };
+
+  const handleCambiarEstadoInfraccion = async (id: number, estado: EstadoInfraccion, observaciones?: string) => {
+    try {
+      const response = await financeService.cambiarEstadoInfraccion(id, estado, observaciones);
+      setSuccess(response.message);
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -186,7 +239,7 @@ const InfraccionesManagement: React.FC = () => {
                       <TableRow key={infraccion.id}>
                         <TableCell>{infraccion.propietario_nombre || '-'}</TableCell>
                         <TableCell>{infraccion.unidad_numero || '-'}</TableCell>
-                        <TableCell>{infraccion.tipo_infraccion_display || '-'}</TableCell>
+                        <TableCell>{infraccion.tipo_infraccion_nombre || '-'}</TableCell>
                         <TableCell>
                           <Tooltip title={infraccion.descripcion || ''}>
                             <span>
@@ -203,7 +256,11 @@ const InfraccionesManagement: React.FC = () => {
                           {getEstadoChip(infraccion.estado || 'registrada')}
                         </TableCell>
                         <TableCell>
-                          {infraccion.monto_multa ? formatCurrency(infraccion.monto_multa) : '-'}
+                          {infraccion.monto_calculado
+                            ? formatCurrency(Number(infraccion.monto_calculado))
+                            : (infraccion.monto_multa
+                                ? formatCurrency(Number(infraccion.monto_multa))
+                                : '-')}
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
@@ -240,6 +297,24 @@ const InfraccionesManagement: React.FC = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
+                            <Tooltip title="Cambiar Estado">
+                              <IconButton
+                                size="small"
+                                color="secondary"
+                                onClick={() => handleOpenEstadoInfraccionModal(infraccion)}
+                              >
+                                <SwapIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Eliminar">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteInfraccion(infraccion.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
                           </Stack>
                         </TableCell>
                       </TableRow>
@@ -276,6 +351,52 @@ const InfraccionesManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal para cambiar estado */}
+      <EstadoInfraccionModal
+        open={openEstadoInfraccionModal}
+        onClose={() => {
+          setOpenEstadoInfraccionModal(false);
+          setSelectedInfraccion(null);
+        }}
+        infraccion={selectedInfraccion}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoInfraccion}
+      />
+
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Confirmar Eliminación
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Está seguro que desea eliminar esta infracción?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            startIcon={<DeleteIcon />}
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

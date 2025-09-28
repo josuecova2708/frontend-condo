@@ -27,6 +27,7 @@ import {
   CargoFormData,
   ConfiguracionMultas,
   ConfiguracionMultasFormData,
+  TipoInfraccionFormData,
   AplicarMultaData,
   ProcesarPagoData,
   ResultadoPago,
@@ -638,6 +639,14 @@ export const financeService = {
     return response.data;
   },
 
+  async cambiarEstadoInfraccion(id: number, estado: EstadoInfraccion, observaciones?: string): Promise<{ message: string; infraccion: Infraccion }> {
+    const response: AxiosResponse<{ message: string; infraccion: Infraccion }> = await api.patch(`/finances/api/infracciones/${id}/cambiar_estado/`, {
+      estado,
+      observaciones_admin: observaciones
+    });
+    return response.data;
+  },
+
   // ========== CARGOS ==========
   async getCargos(page: number = 1, filtros?: FiltrosCargos): Promise<PaginatedResponse<Cargo>> {
     const params = new URLSearchParams();
@@ -678,6 +687,15 @@ export const financeService = {
     await api.delete(`/finances/api/cargos/${id}/`);
   },
 
+  async cambiarEstadoCargo(id: number, estado: EstadoCargo, observaciones?: string, montoPagado?: number): Promise<{ message: string; cargo: Cargo }> {
+    const data: any = { estado };
+    if (observaciones) data.observaciones = observaciones;
+    if (montoPagado !== undefined) data.monto_pagado = montoPagado;
+
+    const response: AxiosResponse<{ message: string; cargo: Cargo }> = await api.patch(`/finances/api/cargos/${id}/cambiar_estado/`, data);
+    return response.data;
+  },
+
   async getCargosVencidos(): Promise<Cargo[]> {
     const response: AxiosResponse<Cargo[]> = await api.get('/finances/api/cargos/vencidos/');
     return response.data;
@@ -693,11 +711,24 @@ export const financeService = {
     return response.data;
   },
 
-  // ========== CONFIGURACIÓN MULTAS ==========
+  // ========== CONFIGURACIÓN MULTAS (DEPRECATED - Use TipoInfraccion instead) ==========
   async getConfiguracionMultas(): Promise<ConfiguracionMultas[]> {
-    const response: AxiosResponse<ConfiguracionMultas[]> = await api.get('/finances/api/configuracion-multas/');
-    // Asegurar que siempre devolvemos un array
-    return Array.isArray(response.data) ? response.data : [];
+    console.warn('getConfiguracionMultas is deprecated. Use getTiposInfraccion instead.');
+    // Redirect to new endpoint
+    const tipos = await this.getTiposInfraccion();
+    // Convert to legacy format for compatibility
+    return tipos.map(tipo => ({
+      id: tipo.id,
+      tipo_infraccion: tipo.codigo as any,
+      monto_base: tipo.monto_base,
+      monto_reincidencia: tipo.monto_reincidencia,
+      dias_para_pago: tipo.dias_para_pago,
+      es_activa: tipo.es_activo,
+      descripcion: tipo.descripcion || '',
+      created_at: tipo.created_at,
+      updated_at: tipo.updated_at,
+      tipo_infraccion_display: tipo.nombre,
+    }));
   },
 
   async getConfiguracionMulta(id: number): Promise<ConfiguracionMultas> {
@@ -717,6 +748,46 @@ export const financeService = {
 
   async deleteConfiguracionMulta(id: number): Promise<void> {
     await api.delete(`/finances/api/configuracion-multas/${id}/`);
+  },
+
+  // ========== TIPOS DE INFRACCIONES ==========
+  async getTiposInfraccion(): Promise<TipoInfraccion[]> {
+    const response: AxiosResponse<PaginatedResponse<TipoInfraccion>> = await api.get('/finances/api/tipos-infraccion/');
+    return Array.isArray(response.data.results) ? response.data.results : [];
+  },
+
+  async getTiposInfraccionActivos(): Promise<TipoInfraccion[]> {
+    const response: AxiosResponse<TipoInfraccion[]> = await api.get('/finances/api/tipos-infraccion/activos/');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  async getTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.get(`/finances/api/tipos-infraccion/${id}/`);
+    return response.data;
+  },
+
+  async createTipoInfraccion(data: TipoInfraccionFormData): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post('/finances/api/tipos-infraccion/', data);
+    return response.data;
+  },
+
+  async updateTipoInfraccion(id: number, data: Partial<TipoInfraccionFormData>): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.patch(`/finances/api/tipos-infraccion/${id}/`, data);
+    return response.data;
+  },
+
+  async deleteTipoInfraccion(id: number): Promise<void> {
+    await api.delete(`/finances/api/tipos-infraccion/${id}/`);
+  },
+
+  async activarTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post(`/finances/api/tipos-infraccion/${id}/activar/`);
+    return response.data;
+  },
+
+  async desactivarTipoInfraccion(id: number): Promise<TipoInfraccion> {
+    const response: AxiosResponse<TipoInfraccion> = await api.post(`/finances/api/tipos-infraccion/${id}/desactivar/`);
+    return response.data;
   },
 
   // ========== ESTADÍSTICAS Y REPORTES ==========
