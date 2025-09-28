@@ -21,6 +21,7 @@ import AreasComunes from './components/areas-comunes/AreasComunes';
 import Mantenimiento from './components/mantenimiento/Mantenimiento';
 import ReportesInstalaciones from './components/reportes/ReportesInstalaciones';
 import VehiclePage from './pages/VehiclePage';
+import FacialRecognitionPage from './pages/FacialRecognitionPage';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -217,6 +218,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <VehiclePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Reconocimiento Facial - Solo para administradores */}
+              <Route
+                path="facial-recognition"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <FacialRecognitionPage />
                   </ProtectedRoute>
                 }
               />

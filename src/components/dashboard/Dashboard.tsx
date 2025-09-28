@@ -46,6 +46,7 @@ import {
   Assessment as ReportIcon,
   SmartToy as AIIcon,
   DirectionsCar as CarIcon,
+  FaceRetouchingNatural as FaceRecognitionIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -168,6 +169,11 @@ const menuItems: MenuItemType[] = [
         text: 'OCR de Placas Vehiculares',
         icon: <CarIcon />,
         path: '/dashboard/vehicle-ocr',
+      },
+      {
+        text: 'Reconocimiento Facial',
+        icon: <FaceRecognitionIcon />,
+        path: '/dashboard/facial-recognition',
       },
     ],
   },
