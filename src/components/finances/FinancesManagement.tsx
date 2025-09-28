@@ -45,6 +45,7 @@ import {
   Receipt as ReceiptIcon,
   Settings as SettingsIcon,
   Assessment as StatsIcon,
+  SwapHoriz as SwapIcon,
 } from '@mui/icons-material';
 import {
   Infraccion,
@@ -63,6 +64,8 @@ import InfraccionForm from './InfraccionForm';
 import CargoForm from './CargoForm';
 import MultaConfigForm from './MultaConfigForm';
 import TipoInfraccionForm from './TipoInfraccionForm';
+import EstadoInfraccionModal from './EstadoInfraccionModal';
+import EstadoCargoModal from './EstadoCargoModal';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -117,6 +120,8 @@ const FinancesManagement: React.FC = () => {
   const [openCargoDialog, setOpenCargoDialog] = useState(false);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [openTipoInfraccionDialog, setOpenTipoInfraccionDialog] = useState(false);
+  const [openEstadoInfraccionModal, setOpenEstadoInfraccionModal] = useState(false);
+  const [openEstadoCargoModal, setOpenEstadoCargoModal] = useState(false);
   const [selectedInfraccion, setSelectedInfraccion] = useState<Infraccion | null>(null);
   const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<ConfiguracionMultas | null>(null);
@@ -434,6 +439,38 @@ const FinancesManagement: React.FC = () => {
     setDeleteTarget(null);
   };
 
+  const handleOpenEstadoInfraccionModal = (infraccion: Infraccion) => {
+    setSelectedInfraccion(infraccion);
+    setOpenEstadoInfraccionModal(true);
+  };
+
+  const handleOpenEstadoCargoModal = (cargo: Cargo) => {
+    setSelectedCargo(cargo);
+    setOpenEstadoCargoModal(true);
+  };
+
+  const handleCambiarEstadoInfraccion = async (id: number, estado: EstadoInfraccion, observaciones?: string) => {
+    try {
+      const response = await financeService.cambiarEstadoInfraccion(id, estado, observaciones);
+      setSuccess(response.message);
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleCambiarEstadoCargo = async (id: number, estado: EstadoCargo, observaciones?: string, montoPagado?: number) => {
+    try {
+      const response = await financeService.cambiarEstadoCargo(id, estado, observaciones, montoPagado);
+      setSuccess(response.message);
+      loadCargos(cargosPage, filtrosCargos);
+      // También recargar infracciones por si se actualiza una infracción relacionada
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      throw error;
+    }
+  };
+
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -568,6 +605,15 @@ const FinancesManagement: React.FC = () => {
                                   </IconButton>
                                 </Tooltip>
                               )}
+                              <Tooltip title="Cambiar Estado">
+                                <IconButton
+                                  size="small"
+                                  color="secondary"
+                                  onClick={() => handleOpenEstadoInfraccionModal(infraccion)}
+                                >
+                                  <SwapIcon />
+                                </IconButton>
+                              </Tooltip>
                               <Tooltip title="Eliminar">
                                 <IconButton
                                   size="small"
@@ -668,6 +714,15 @@ const FinancesManagement: React.FC = () => {
                                   }}
                                 >
                                   <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Cambiar Estado">
+                                <IconButton
+                                  size="small"
+                                  color="secondary"
+                                  onClick={() => handleOpenEstadoCargoModal(cargo)}
+                                >
+                                  <SwapIcon />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Eliminar">
@@ -1016,6 +1071,31 @@ const FinancesManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modales para cambiar estado */}
+      <EstadoInfraccionModal
+        open={openEstadoInfraccionModal}
+        onClose={() => {
+          setOpenEstadoInfraccionModal(false);
+          setSelectedInfraccion(null);
+        }}
+        infraccion={selectedInfraccion}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoInfraccion}
+      />
+
+      <EstadoCargoModal
+        open={openEstadoCargoModal}
+        onClose={() => {
+          setOpenEstadoCargoModal(false);
+          setSelectedCargo(null);
+        }}
+        cargo={selectedCargo}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoCargo}
+      />
 
       {/* Diálogo de confirmación de eliminación */}
       <Dialog

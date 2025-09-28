@@ -639,6 +639,14 @@ export const financeService = {
     return response.data;
   },
 
+  async cambiarEstadoInfraccion(id: number, estado: EstadoInfraccion, observaciones?: string): Promise<{ message: string; infraccion: Infraccion }> {
+    const response: AxiosResponse<{ message: string; infraccion: Infraccion }> = await api.patch(`/finances/api/infracciones/${id}/cambiar_estado/`, {
+      estado,
+      observaciones_admin: observaciones
+    });
+    return response.data;
+  },
+
   // ========== CARGOS ==========
   async getCargos(page: number = 1, filtros?: FiltrosCargos): Promise<PaginatedResponse<Cargo>> {
     const params = new URLSearchParams();
@@ -677,6 +685,15 @@ export const financeService = {
 
   async deleteCargo(id: number): Promise<void> {
     await api.delete(`/finances/api/cargos/${id}/`);
+  },
+
+  async cambiarEstadoCargo(id: number, estado: EstadoCargo, observaciones?: string, montoPagado?: number): Promise<{ message: string; cargo: Cargo }> {
+    const data: any = { estado };
+    if (observaciones) data.observaciones = observaciones;
+    if (montoPagado !== undefined) data.monto_pagado = montoPagado;
+
+    const response: AxiosResponse<{ message: string; cargo: Cargo }> = await api.patch(`/finances/api/cargos/${id}/cambiar_estado/`, data);
+    return response.data;
   },
 
   async getCargosVencidos(): Promise<Cargo[]> {

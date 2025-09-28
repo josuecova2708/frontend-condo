@@ -30,14 +30,17 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
   Receipt as ReceiptIcon,
+  SwapHoriz as SwapIcon,
 } from '@mui/icons-material';
 import {
   Cargo,
   FiltrosCargos,
   PaginatedResponse,
+  EstadoCargo,
 } from '../../types';
 import { financeService, handleApiError } from '../../services/api';
 import CargoForm from './CargoForm';
+import EstadoCargoModal from './EstadoCargoModal';
 
 const CargosManagement: React.FC = () => {
   // Estado para cargos
@@ -53,6 +56,7 @@ const CargosManagement: React.FC = () => {
 
   // Estado para modales
   const [openCargoDialog, setOpenCargoDialog] = useState(false);
+  const [openEstadoCargoModal, setOpenEstadoCargoModal] = useState(false);
   const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
 
   // Estado general
@@ -129,6 +133,21 @@ const CargosManagement: React.FC = () => {
   const handleCancelDelete = () => {
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+  };
+
+  const handleOpenEstadoCargoModal = (cargo: Cargo) => {
+    setSelectedCargo(cargo);
+    setOpenEstadoCargoModal(true);
+  };
+
+  const handleCambiarEstadoCargo = async (id: number, estado: EstadoCargo, observaciones?: string, montoPagado?: number) => {
+    try {
+      const response = await financeService.cambiarEstadoCargo(id, estado, observaciones, montoPagado);
+      setSuccess(response.message);
+      loadCargos(cargosPage, filtrosCargos);
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
@@ -219,6 +238,15 @@ const CargosManagement: React.FC = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Cambiar Estado">
+                              <IconButton
+                                size="small"
+                                color="secondary"
+                                onClick={() => handleOpenEstadoCargoModal(cargo)}
+                              >
+                                <SwapIcon />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Eliminar">
                               <IconButton
                                 size="small"
@@ -264,6 +292,19 @@ const CargosManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal para cambiar estado */}
+      <EstadoCargoModal
+        open={openEstadoCargoModal}
+        onClose={() => {
+          setOpenEstadoCargoModal(false);
+          setSelectedCargo(null);
+        }}
+        cargo={selectedCargo}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoCargo}
+      />
 
       {/* Diálogo de confirmación de eliminación */}
       <Dialog

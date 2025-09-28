@@ -32,14 +32,17 @@ import {
   Refresh as RefreshIcon,
   CheckCircle as CheckIcon,
   AttachMoney as MoneyIcon,
+  SwapHoriz as SwapIcon,
 } from '@mui/icons-material';
 import {
   Infraccion,
   FiltrosInfracciones,
   PaginatedResponse,
+  EstadoInfraccion,
 } from '../../types';
 import { financeService, handleApiError } from '../../services/api';
 import InfraccionForm from './InfraccionForm';
+import EstadoInfraccionModal from './EstadoInfraccionModal';
 
 const InfraccionesManagement: React.FC = () => {
   // Estado para infracciones
@@ -55,6 +58,7 @@ const InfraccionesManagement: React.FC = () => {
 
   // Estado para modales
   const [openInfraccionDialog, setOpenInfraccionDialog] = useState(false);
+  const [openEstadoInfraccionModal, setOpenEstadoInfraccionModal] = useState(false);
   const [selectedInfraccion, setSelectedInfraccion] = useState<Infraccion | null>(null);
 
   // Estado general
@@ -152,6 +156,21 @@ const InfraccionesManagement: React.FC = () => {
   const handleCancelDelete = () => {
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+  };
+
+  const handleOpenEstadoInfraccionModal = (infraccion: Infraccion) => {
+    setSelectedInfraccion(infraccion);
+    setOpenEstadoInfraccionModal(true);
+  };
+
+  const handleCambiarEstadoInfraccion = async (id: number, estado: EstadoInfraccion, observaciones?: string) => {
+    try {
+      const response = await financeService.cambiarEstadoInfraccion(id, estado, observaciones);
+      setSuccess(response.message);
+      loadInfracciones(infraccionesPage, filtrosInfracciones);
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
@@ -278,6 +297,15 @@ const InfraccionesManagement: React.FC = () => {
                                 </IconButton>
                               </Tooltip>
                             )}
+                            <Tooltip title="Cambiar Estado">
+                              <IconButton
+                                size="small"
+                                color="secondary"
+                                onClick={() => handleOpenEstadoInfraccionModal(infraccion)}
+                              >
+                                <SwapIcon />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Eliminar">
                               <IconButton
                                 size="small"
@@ -323,6 +351,19 @@ const InfraccionesManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal para cambiar estado */}
+      <EstadoInfraccionModal
+        open={openEstadoInfraccionModal}
+        onClose={() => {
+          setOpenEstadoInfraccionModal(false);
+          setSelectedInfraccion(null);
+        }}
+        infraccion={selectedInfraccion}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoInfraccion}
+      />
 
       {/* Diálogo de confirmación de eliminación */}
       <Dialog
