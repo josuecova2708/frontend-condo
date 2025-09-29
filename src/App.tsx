@@ -22,6 +22,7 @@ import Mantenimiento from './components/mantenimiento/Mantenimiento';
 import ReportesInstalaciones from './components/reportes/ReportesInstalaciones';
 import VehiclePage from './pages/VehiclePage';
 import FacialRecognitionPage from './pages/FacialRecognitionPage';
+import CameraPage from './pages/CameraPage';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -228,6 +229,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <FacialRecognitionPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Cámaras - Solo para administradores */}
+              <Route
+                path="cameras"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <CameraPage />
                   </ProtectedRoute>
                 }
               />

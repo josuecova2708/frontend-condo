@@ -47,6 +47,7 @@ import {
   SmartToy as AIIcon,
   DirectionsCar as CarIcon,
   FaceRetouchingNatural as FaceRecognitionIcon,
+  VideoSettings as CameraIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -174,6 +175,11 @@ const menuItems: MenuItemType[] = [
         text: 'Reconocimiento Facial',
         icon: <FaceRecognitionIcon />,
         path: '/dashboard/facial-recognition',
+      },
+      {
+        text: 'Cámaras',
+        icon: <CameraIcon />,
+        path: '/dashboard/cameras',
       },
     ],
   },
