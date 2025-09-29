@@ -23,6 +23,7 @@ import ReportesInstalaciones from './components/reportes/ReportesInstalaciones';
 import VehiclePage from './pages/VehiclePage';
 import FacialRecognitionPage from './pages/FacialRecognitionPage';
 import CameraPage from './pages/CameraPage';
+import ActividadSospechosaPage from './pages/ActividadSospechosaPage';
 
 // Tema personalizado para Material-UI
 const theme = createTheme({
@@ -239,6 +240,16 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="Administrador">
                     <CameraPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Actividad Sospechosa - Solo para administradores */}
+              <Route
+                path="actividad-sospechosa"
+                element={
+                  <ProtectedRoute requiredRole="Administrador">
+                    <ActividadSospechosaPage />
                   </ProtectedRoute>
                 }
               />
