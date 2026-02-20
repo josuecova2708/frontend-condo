@@ -47,6 +47,8 @@ import {
   SmartToy as AIIcon,
   DirectionsCar as CarIcon,
   FaceRetouchingNatural as FaceRecognitionIcon,
+  VideoSettings as CameraIcon,
+  Warning as SuspiciousActivityIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -174,6 +176,16 @@ const menuItems: MenuItemType[] = [
         text: 'Reconocimiento Facial',
         icon: <FaceRecognitionIcon />,
         path: '/dashboard/facial-recognition',
+      },
+      {
+        text: 'Cámaras',
+        icon: <CameraIcon />,
+        path: '/dashboard/cameras',
+      },
+      {
+        text: 'Actividad Sospechosa',
+        icon: <SuspiciousActivityIcon />,
+        path: '/dashboard/actividad-sospechosa',
       },
     ],
   },
@@ -417,6 +429,9 @@ const Dashboard: React.FC = () => {
             {location.pathname === '/dashboard/control-acceso-qr' && 'Control de Acceso con QR'}
             {location.pathname === '/dashboard/mantenimiento' && 'Solicitudes de Mantenimiento'}
             {location.pathname === '/dashboard/vehicle-ocr' && 'OCR de Placas Vehiculares'}
+            {location.pathname === '/dashboard/facial-recognition' && 'Reconocimiento Facial'}
+            {location.pathname === '/dashboard/cameras' && 'Gestión de Cámaras'}
+            {location.pathname === '/dashboard/actividad-sospechosa' && 'Análisis de Actividades Sospechosas'}
           </Typography>
 
           {/* Información del usuario */}

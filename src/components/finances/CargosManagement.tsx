@@ -19,20 +19,28 @@ import {
   Tooltip,
   Pagination,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Refresh as RefreshIcon,
   Receipt as ReceiptIcon,
+  SwapHoriz as SwapIcon,
 } from '@mui/icons-material';
 import {
   Cargo,
   FiltrosCargos,
   PaginatedResponse,
+  EstadoCargo,
 } from '../../types';
 import { financeService, handleApiError } from '../../services/api';
 import CargoForm from './CargoForm';
+import EstadoCargoModal from './EstadoCargoModal';
 
 const CargosManagement: React.FC = () => {
   // Estado para cargos
@@ -48,11 +56,16 @@ const CargosManagement: React.FC = () => {
 
   // Estado para modales
   const [openCargoDialog, setOpenCargoDialog] = useState(false);
+  const [openEstadoCargoModal, setOpenEstadoCargoModal] = useState(false);
   const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
 
   // Estado general
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Estado para confirmación de eliminación
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     loadCargos();
@@ -95,6 +108,46 @@ const CargosManagement: React.FC = () => {
       style: 'currency',
       currency: 'BOB',
     }).format(amount);
+  };
+
+  const handleDeleteCargo = (id: number) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+
+    try {
+      await financeService.deleteCargo(deleteTargetId);
+      setSuccess('Cargo eliminado exitosamente');
+      loadCargos(cargosPage, filtrosCargos);
+    } catch (error) {
+      setError(handleApiError(error));
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  const handleOpenEstadoCargoModal = (cargo: Cargo) => {
+    setSelectedCargo(cargo);
+    setOpenEstadoCargoModal(true);
+  };
+
+  const handleCambiarEstadoCargo = async (id: number, estado: EstadoCargo, observaciones?: string, montoPagado?: number) => {
+    try {
+      const response = await financeService.cambiarEstadoCargo(id, estado, observaciones, montoPagado);
+      setSuccess(response.message);
+      loadCargos(cargosPage, filtrosCargos);
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
@@ -185,6 +238,24 @@ const CargosManagement: React.FC = () => {
                                 <EditIcon />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Cambiar Estado">
+                              <IconButton
+                                size="small"
+                                color="secondary"
+                                onClick={() => handleOpenEstadoCargoModal(cargo)}
+                              >
+                                <SwapIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Eliminar">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteCargo(cargo.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
                           </Stack>
                         </TableCell>
                       </TableRow>
@@ -221,6 +292,52 @@ const CargosManagement: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal para cambiar estado */}
+      <EstadoCargoModal
+        open={openEstadoCargoModal}
+        onClose={() => {
+          setOpenEstadoCargoModal(false);
+          setSelectedCargo(null);
+        }}
+        cargo={selectedCargo}
+        onSuccess={setSuccess}
+        onError={setError}
+        onCambiarEstado={handleCambiarEstadoCargo}
+      />
+
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Confirmar Eliminación
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Está seguro que desea eliminar este cargo?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Esta acción no se puede deshacer.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            startIcon={<DeleteIcon />}
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
